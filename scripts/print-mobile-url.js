@@ -1,6 +1,6 @@
 import os from "os";
 
-function getLocalIp(): string | null {
+function getLocalIp() {
   const interfaces = os.networkInterfaces();
   for (const entries of Object.values(interfaces)) {
     if (!entries) continue;

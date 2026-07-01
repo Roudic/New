@@ -1,11 +1,18 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { prisma } from "@/lib/prisma";
+import { prisma, getDatabaseHint } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+
+if (!process.env.NEXTAUTH_SECRET) {
+  console.error(
+    "NEXTAUTH_SECRET is missing. Authentication will fail until it is configured."
+  );
+}
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -16,25 +23,38 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email.toLowerCase().trim() },
-        });
+        const configError = getDatabaseHint();
+        if (configError) {
+          console.error(configError);
+          throw new Error(configError);
+        }
 
-        if (!user) return null;
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email.toLowerCase().trim() },
+          });
 
-        const valid = await verifyPassword(
-          credentials.password,
-          user.passwordHash
-        );
-        if (!valid) return null;
+          if (!user) return null;
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role as "ADMIN" | "EMPLOYEE",
-          locationName: user.locationName,
-        };
+          const valid = await verifyPassword(
+            credentials.password,
+            user.passwordHash
+          );
+          if (!valid) return null;
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role as "ADMIN" | "EMPLOYEE",
+            locationName: user.locationName,
+          };
+        } catch (error) {
+          console.error("Login database error:", error);
+          throw new Error(
+            "Database connection failed. Check DATABASE_URL and run db:push + db:seed."
+          );
+        }
       },
     }),
   ],

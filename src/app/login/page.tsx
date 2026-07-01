@@ -26,7 +26,13 @@ export default function LoginPage() {
     setLoading(false);
 
     if (result?.error) {
-      setError("Invalid email or password.");
+      if (result.error.includes("DATABASE_URL")) {
+        setError("Server database is not configured. Check Vercel env vars.");
+      } else if (result.error.includes("Database connection failed")) {
+        setError("Database connection failed. The app may need to be seeded.");
+      } else {
+        setError("Invalid email or password.");
+      }
       return;
     }
 
