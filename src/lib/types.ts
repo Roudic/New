@@ -12,7 +12,8 @@ export type ChecklistCategory =
   | "food_safety"
   | "cleaning"
   | "shift"
-  | "audit";
+  | "audit"
+  | "custom";
 
 export type ChecklistSchedule = "daily" | "weekly" | "per_shift";
 
@@ -35,6 +36,9 @@ export interface ChecklistTemplate {
   schedule: ChecklistSchedule;
   estimatedMinutes: number;
   items: ChecklistItem[];
+  isCustom?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TaskCompletion {
@@ -69,4 +73,10 @@ export interface AppSettings {
 export interface AppState {
   settings: AppSettings;
   runs: ChecklistRun[];
+  customChecklists: ChecklistTemplate[];
 }
+
+export type ChecklistDraft = Omit<
+  ChecklistTemplate,
+  "id" | "isCustom" | "createdAt" | "updatedAt"
+>;

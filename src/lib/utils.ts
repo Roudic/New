@@ -61,8 +61,35 @@ export function categoryLabel(category: string): string {
     cleaning: "Cleaning",
     shift: "Shift Change",
     audit: "Audit",
+    custom: "Custom",
   };
   return labels[category] ?? category;
+}
+
+export function categoryAccent(category: string): string {
+  const accents: Record<string, string> = {
+    opening: "from-amber-500 to-orange-600",
+    closing: "from-indigo-500 to-violet-600",
+    food_safety: "from-rose-500 to-red-600",
+    cleaning: "from-teal-500 to-emerald-600",
+    shift: "from-sky-500 to-blue-600",
+    audit: "from-purple-500 to-fuchsia-600",
+    custom: "from-brand-500 to-brand-700",
+  };
+  return accents[category] ?? "from-slate-500 to-slate-700";
+}
+
+export function categoryBorder(category: string): string {
+  const borders: Record<string, string> = {
+    opening: "border-l-amber-500",
+    closing: "border-l-indigo-500",
+    food_safety: "border-l-rose-500",
+    cleaning: "border-l-teal-500",
+    shift: "border-l-sky-500",
+    audit: "border-l-purple-500",
+    custom: "border-l-brand-500",
+  };
+  return borders[category] ?? "border-l-slate-400";
 }
 
 export function scheduleLabel(schedule: string): string {

@@ -116,10 +116,10 @@ export function TaskItem({
 
   return (
     <div
-      className={`rounded-2xl border p-4 transition-colors ${
+      className={`rounded-2xl border p-4 transition-all ${
         isDone
-          ? "border-emerald-200 bg-emerald-50/60"
-          : "border-slate-200 bg-white"
+          ? "border-emerald-200 bg-emerald-50/70 shadow-sm"
+          : "border-slate-200/80 bg-white shadow-card"
       }`}
     >
       <div className="flex items-start gap-3">

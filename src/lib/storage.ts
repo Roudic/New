@@ -8,6 +8,7 @@ export const defaultAppState: AppState = {
     locationName: "Main Street Location",
   },
   runs: [],
+  customChecklists: [],
 };
 
 export function loadAppState(): AppState {
@@ -18,7 +19,12 @@ export function loadAppState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultAppState;
-    return { ...defaultAppState, ...JSON.parse(raw) } as AppState;
+    const parsed = JSON.parse(raw) as Partial<AppState>;
+    return {
+      ...defaultAppState,
+      ...parsed,
+      customChecklists: parsed.customChecklists ?? [],
+    };
   } catch {
     return defaultAppState;
   }

@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getTemplateById } from "@/lib/templates";
+import { resolveTemplate } from "@/lib/checklists";
 import {
   defaultAppState,
   loadAppState,
@@ -17,7 +17,9 @@ import {
 } from "@/lib/storage";
 import type {
   AppSettings,
+  ChecklistDraft,
   ChecklistRun,
+  ChecklistTemplate,
   TaskCompletion,
 } from "@/lib/types";
 import { generateId, isRunComplete } from "@/lib/utils";
@@ -26,6 +28,7 @@ interface AppContextValue {
   hydrated: boolean;
   settings: AppSettings;
   runs: ChecklistRun[];
+  customChecklists: ChecklistTemplate[];
   updateSettings: (settings: Partial<AppSettings>) => void;
   startChecklist: (templateId: string) => ChecklistRun | null;
   completeTask: (
@@ -34,6 +37,10 @@ interface AppContextValue {
   ) => void;
   removeTaskCompletion: (runId: string, itemId: string) => void;
   getRunById: (runId: string) => ChecklistRun | undefined;
+  getTemplateById: (id: string) => ChecklistTemplate | undefined;
+  createChecklist: (draft: ChecklistDraft) => ChecklistTemplate;
+  updateChecklist: (id: string, draft: ChecklistDraft) => void;
+  deleteChecklist: (id: string) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -42,12 +49,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [settings, setSettings] = useState(defaultAppState.settings);
   const [runs, setRuns] = useState<ChecklistRun[]>([]);
+  const [customChecklists, setCustomChecklists] = useState<
+    ChecklistTemplate[]
+  >([]);
 
   useEffect(() => {
     try {
       const state = loadAppState();
       setSettings(state.settings);
       setRuns(state.runs);
+      setCustomChecklists(state.customChecklists);
     } catch {
       // Storage can fail in private browsing; still show the app.
     } finally {
@@ -57,8 +68,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
-    saveAppState({ settings, runs });
-  }, [hydrated, settings, runs]);
+    saveAppState({ settings, runs, customChecklists });
+  }, [hydrated, settings, runs, customChecklists]);
+
+  const getTemplateById = useCallback(
+    (id: string) => resolveTemplate(id, customChecklists),
+    [customChecklists]
+  );
 
   const updateSettings = useCallback((partial: Partial<AppSettings>) => {
     setSettings((prev) => ({ ...prev, ...partial }));
@@ -69,9 +85,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [runs]
   );
 
+  const createChecklist = useCallback((draft: ChecklistDraft) => {
+    const now = new Date().toISOString();
+    const checklist: ChecklistTemplate = {
+      ...draft,
+      id: `custom-${generateId()}`,
+      isCustom: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    setCustomChecklists((prev) => [checklist, ...prev]);
+    return checklist;
+  }, []);
+
+  const updateChecklist = useCallback((id: string, draft: ChecklistDraft) => {
+    setCustomChecklists((prev) =>
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, ...draft, updatedAt: new Date().toISOString() }
+          : c
+      )
+    );
+  }, []);
+
+  const deleteChecklist = useCallback((id: string) => {
+    setCustomChecklists((prev) => prev.filter((c) => c.id !== id));
+  }, []);
+
   const startChecklist = useCallback(
     (templateId: string): ChecklistRun | null => {
-      const template = getTemplateById(templateId);
+      const template = resolveTemplate(templateId, customChecklists);
       if (!template) return null;
 
       const employeeName = settings.employeeName.trim() || "Team Member";
@@ -90,7 +133,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setRuns((prev) => [run, ...prev]);
       return run;
     },
-    [settings.employeeName]
+    [customChecklists, settings.employeeName]
   );
 
   const completeTask = useCallback(
@@ -114,7 +157,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           );
           completions.push(fullCompletion);
 
-          const template = getTemplateById(run.templateId);
+          const template = resolveTemplate(run.templateId, customChecklists);
           const updatedRun: ChecklistRun = {
             ...run,
             completions,
@@ -132,7 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
       );
     },
-    [settings.employeeName]
+    [customChecklists, settings.employeeName]
   );
 
   const removeTaskCompletion = useCallback((runId: string, itemId: string) => {
@@ -154,21 +197,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
       hydrated,
       settings,
       runs,
+      customChecklists,
       updateSettings,
       startChecklist,
       completeTask,
       removeTaskCompletion,
       getRunById,
+      getTemplateById,
+      createChecklist,
+      updateChecklist,
+      deleteChecklist,
     }),
     [
       hydrated,
       settings,
       runs,
+      customChecklists,
       updateSettings,
       startChecklist,
       completeTask,
       removeTaskCompletion,
       getRunById,
+      getTemplateById,
+      createChecklist,
+      updateChecklist,
+      deleteChecklist,
     ]
   );
 

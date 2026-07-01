@@ -12,6 +12,7 @@ A Jolt-inspired digital operations checklist app for deskless teams. Replace pap
 - **Operations dashboard** — Track in-progress, due, and completed checklists at a glance
 - **Completion history** — Full audit trail of past runs
 - **Mobile-first UI** — Bottom nav on phones, responsive layout on tablets and desktop
+- **Custom checklist builder** — Create, edit, and delete your own checklists with any task types
 
 ## Getting Started
 
@@ -60,7 +61,7 @@ No environment variables or database are required. Checklist data stays in each 
 ## Usage
 
 1. Go to **Settings** and enter your name and location.
-2. Browse **Checklists** and start a template.
+2. Tap **Create** to build your own checklist, or browse **Checklists** for built-in templates.
 3. Complete each task — photos and temperatures are validated inline.
 4. Review completed runs in **History**.
 
