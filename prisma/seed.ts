@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../src/lib/password";
+import { prisma } from "../src/lib/prisma";
 import { checklistTemplates } from "../src/lib/templates";
-
-const prisma = new PrismaClient();
 
 async function main() {
   await prisma.taskCompletion.deleteMany();

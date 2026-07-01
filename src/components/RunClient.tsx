@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, PartyPopper, User } from "lucide-react";
@@ -39,6 +40,7 @@ interface RunData {
 
 export function RunClient({ runId }: { runId: string }) {
   const router = useRouter();
+  const { data: session } = useSession();
   const [run, setRun] = useState<RunData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -117,7 +119,13 @@ export function RunClient({ runId }: { runId: string }) {
   return (
     <AppShell>
       <PageHeader
-        backHref={run.status === "completed" ? "/history" : "/employee"}
+        backHref={
+          run.status === "completed"
+            ? "/history"
+            : session?.user?.role === "ADMIN"
+              ? "/admin"
+              : "/employee"
+        }
         backLabel="Back"
         eyebrow={categoryLabel(template.category)}
         title={template.name}

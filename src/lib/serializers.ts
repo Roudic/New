@@ -9,6 +9,7 @@ type TemplateWithItems = ChecklistTemplate & { items: ChecklistItem[] };
 type RunWithCompletions = ChecklistRun & {
   completions: TaskCompletion[];
   template?: TemplateWithItems;
+  user?: { id: string; name: string };
 };
 
 export function serializeTemplate(template: TemplateWithItems) {
@@ -48,7 +49,7 @@ export function serializeRun(run: RunWithCompletions) {
     assignmentId: run.assignmentId,
     startedAt: run.startedAt.toISOString(),
     completedAt: run.completedAt?.toISOString(),
-    startedBy: run.userId,
+    startedBy: run.user?.name ?? run.userId,
     status: run.status === "COMPLETED" ? "completed" : "in_progress",
     completions: run.completions.map((c) => ({
       itemId: c.itemId,

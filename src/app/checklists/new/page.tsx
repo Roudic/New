@@ -31,8 +31,8 @@ export default function NewChecklistPage() {
 
       <ChecklistBuilder
         submitLabel="Create Checklist"
-        onSave={(draft: ChecklistDraft) => {
-          const checklist = createChecklist(draft);
+        onSave={async (draft: ChecklistDraft) => {
+          const checklist = await createChecklist(draft);
           router.push(`/checklists/${checklist.id}`);
         }}
       />

@@ -56,12 +56,12 @@ export default function EditChecklistPage({
       <ChecklistBuilder
         initial={template}
         submitLabel="Save Changes"
-        onSave={(draft: ChecklistDraft) => {
-          updateChecklist(template.id, draft);
+        onSave={async (draft: ChecklistDraft) => {
+          await updateChecklist(template.id, draft);
           router.push(`/checklists/${template.id}`);
         }}
-        onDelete={() => {
-          deleteChecklist(template.id);
+        onDelete={async () => {
+          await deleteChecklist(template.id);
           router.push("/checklists");
         }}
       />

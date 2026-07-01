@@ -8,7 +8,7 @@ import { useApp } from "@/context/AppContext";
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { settings, updateSettings, resetAllData } = useApp();
+  const { settings, updateSettings, resetAllData, storageMode } = useApp();
 
   return (
     <AppShell>
@@ -56,10 +56,13 @@ export default function SettingsPage() {
         </div>
 
         <div className="glass-panel p-6 text-sm leading-relaxed text-slate-600">
-          <h3 className="font-bold text-slate-900">Works on your phone instantly</h3>
+          <h3 className="font-bold text-slate-900">
+            {storageMode === "cloud" ? "Cloud database connected" : "Offline demo mode"}
+          </h3>
           <p className="mt-3">
-            No database setup required. Your checklists, assignments, and progress are saved
-            in this browser on this device.
+            {storageMode === "cloud"
+              ? "Your team data is stored in the cloud and syncs across devices when you sign in."
+              : "No cloud database detected. Data is saved in this browser only. Add DATABASE_URL on Vercel to enable cloud sync."}
           </p>
           <p className="mt-3 font-semibold text-slate-800">Demo accounts</p>
           <ul className="mt-2 space-y-1">
@@ -70,6 +73,10 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => {
+              if (storageMode === "cloud") {
+                alert("Cloud data is managed on the server. Contact your admin to reset accounts.");
+                return;
+              }
               if (confirm("Reset all data on this device? You will be logged out.")) {
                 resetAllData();
                 router.push("/login");
@@ -77,7 +84,7 @@ export default function SettingsPage() {
             }}
             className="btn-danger mt-6"
           >
-            Reset all data on this device
+            {storageMode === "cloud" ? "Cloud data info" : "Reset all data on this device"}
           </button>
         </div>
       </div>

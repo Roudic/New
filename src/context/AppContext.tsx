@@ -9,6 +9,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { signIn, signOut, useSession } from "next-auth/react";
+import {
+  createCloudAssignment,
+  createCloudChecklist,
+  deleteCloudChecklist,
+  fetchAssignments,
+  fetchEmployees,
+  fetchHealth,
+  fetchRuns,
+  fetchTemplates,
+  startCloudRun,
+  updateCloudChecklist,
+  type CloudEmployee,
+} from "@/lib/api-client";
 import { findDemoUser, getDemoEmployees } from "@/lib/demo-users";
 import { getAllTemplates, resolveTemplate } from "@/lib/checklists";
 import {
@@ -26,18 +40,33 @@ import type {
 } from "@/lib/types";
 import { generateId, isRunComplete } from "@/lib/utils";
 
+export type StorageMode = "loading" | "local" | "cloud";
+
+export interface AppEmployee {
+  id?: string;
+  email: string;
+  name: string;
+  locationName: string;
+}
+
 interface AppContextValue {
+  storageMode: StorageMode;
+  needsSeed: boolean;
   hydrated: boolean;
   settings: AppSettings;
   runs: ChecklistRun[];
   customChecklists: ChecklistTemplate[];
   assignments: Assignment[];
   isLoggedIn: boolean;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  refreshData: () => Promise<void>;
   updateSettings: (settings: Partial<AppSettings>) => void;
-  startChecklist: (templateId: string, assignmentId?: string) => ChecklistRun | null;
-  startAssignment: (assignmentId: string) => ChecklistRun | null;
+  startChecklist: (
+    templateId: string,
+    assignmentId?: string
+  ) => Promise<ChecklistRun | null>;
+  startAssignment: (assignmentId: string) => Promise<ChecklistRun | null>;
   completeTask: (
     runId: string,
     completion: Omit<TaskCompletion, "completedAt" | "completedBy">
@@ -46,17 +75,17 @@ interface AppContextValue {
   getRunById: (runId: string) => ChecklistRun | undefined;
   getTemplateById: (id: string) => ChecklistTemplate | undefined;
   getAllTemplates: () => ChecklistTemplate[];
-  createChecklist: (draft: ChecklistDraft) => ChecklistTemplate;
-  updateChecklist: (id: string, draft: ChecklistDraft) => void;
-  deleteChecklist: (id: string) => void;
+  createChecklist: (draft: ChecklistDraft) => Promise<ChecklistTemplate>;
+  updateChecklist: (id: string, draft: ChecklistDraft) => Promise<void>;
+  deleteChecklist: (id: string) => Promise<void>;
   createAssignment: (input: {
     templateId: string;
     assignedToEmail: string;
     dueDate?: string;
     notes?: string;
-  }) => void;
+  }) => Promise<void>;
   resetAllData: () => void;
-  getEmployees: () => ReturnType<typeof getDemoEmployees>;
+  getEmployees: () => AppEmployee[];
 }
 
 function seedDemoAssignments(): Assignment[] {
@@ -87,15 +116,34 @@ function seedDemoAssignments(): Assignment[] {
 const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [hydrated, setHydrated] = useState(false);
+  const { data: session, status: sessionStatus } = useSession();
+  const [storageMode, setStorageMode] = useState<StorageMode>("loading");
+  const [needsSeed, setNeedsSeed] = useState(false);
+  const [ready, setReady] = useState(false);
   const [settings, setSettings] = useState(defaultAppState.settings);
   const [runs, setRuns] = useState<ChecklistRun[]>([]);
+  const [cloudTemplates, setCloudTemplates] = useState<ChecklistTemplate[]>([]);
   const [customChecklists, setCustomChecklists] = useState<ChecklistTemplate[]>(
     []
   );
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [cloudEmployees, setCloudEmployees] = useState<CloudEmployee[]>([]);
 
   useEffect(() => {
+    fetchHealth().then((health) => {
+      if (health.ok) {
+        setStorageMode("cloud");
+        setNeedsSeed(Boolean(health.needsSeed));
+      } else {
+        setStorageMode("local");
+        setNeedsSeed(false);
+      }
+      setReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (storageMode !== "local" || !ready) return;
     try {
       const state = loadAppState();
       setSettings(state.settings);
@@ -106,100 +154,207 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
     } catch {
       // Storage can fail in private browsing.
-    } finally {
-      setHydrated(true);
     }
-  }, []);
+  }, [storageMode, ready]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (storageMode !== "local" || !ready) return;
     saveAppState({ settings, runs, customChecklists, assignments });
-  }, [hydrated, settings, runs, customChecklists, assignments]);
+  }, [storageMode, ready, settings, runs, customChecklists, assignments]);
 
-  const isLoggedIn = Boolean(settings.role && settings.email);
+  const cloudSettings = useMemo<AppSettings>(() => {
+    if (!session?.user) return defaultAppState.settings;
+    return {
+      employeeName: session.user.name ?? "",
+      locationName: session.user.locationName ?? "Main Street Location",
+      email: session.user.email ?? undefined,
+      role: session.user.role,
+    };
+  }, [session]);
+
+  const activeSettings = storageMode === "cloud" ? cloudSettings : settings;
+  const isLoggedIn =
+    storageMode === "cloud"
+      ? Boolean(session?.user)
+      : Boolean(settings.role && settings.email);
+
+  const hydrated =
+    ready && (storageMode === "local" || sessionStatus !== "loading");
+
+  const refreshData = useCallback(async () => {
+    if (storageMode !== "cloud" || !session?.user) return;
+
+    const [templates, nextAssignments, nextRuns] = await Promise.all([
+      fetchTemplates(),
+      fetchAssignments(),
+      fetchRuns(),
+    ]);
+
+    setCloudTemplates(templates);
+    setAssignments(nextAssignments);
+    setRuns(nextRuns);
+
+    if (session.user.role === "ADMIN") {
+      const employees = await fetchEmployees();
+      setCloudEmployees(employees);
+    }
+  }, [storageMode, session]);
+
+  useEffect(() => {
+    if (storageMode === "cloud" && session?.user) {
+      refreshData().catch(console.error);
+    }
+  }, [storageMode, session?.user, refreshData]);
 
   const getTemplateById = useCallback(
-    (id: string) => resolveTemplate(id, customChecklists),
-    [customChecklists]
+    (id: string) => {
+      if (storageMode === "cloud") {
+        return cloudTemplates.find((t) => t.id === id);
+      }
+      return resolveTemplate(id, customChecklists);
+    },
+    [storageMode, cloudTemplates, customChecklists]
   );
 
-  const getAllTemplatesList = useCallback(
-    () => getAllTemplates(customChecklists),
-    [customChecklists]
+  const getAllTemplatesList = useCallback(() => {
+    if (storageMode === "cloud") return cloudTemplates;
+    return getAllTemplates(customChecklists);
+  }, [storageMode, cloudTemplates, customChecklists]);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      if (storageMode === "cloud") {
+        if (needsSeed) return false;
+        const result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+        return !result?.error;
+      }
+
+      const user = findDemoUser(email, password);
+      if (!user) return false;
+
+      setSettings({
+        employeeName: user.name,
+        locationName: user.locationName,
+        email: user.email,
+        role: user.role,
+      });
+      return true;
+    },
+    [storageMode, needsSeed]
   );
 
-  const login = useCallback((email: string, password: string) => {
-    const user = findDemoUser(email, password);
-    if (!user) return false;
+  const logout = useCallback(async () => {
+    if (storageMode === "cloud") {
+      await signOut({ redirect: false });
+      setCloudTemplates([]);
+      setAssignments([]);
+      setRuns([]);
+      setCloudEmployees([]);
+      return;
+    }
 
-    setSettings({
-      employeeName: user.name,
-      locationName: user.locationName,
-      email: user.email,
-      role: user.role,
-    });
-    return true;
-  }, []);
-
-  const logout = useCallback(() => {
     setSettings({
       employeeName: "",
       locationName: "Main Street Location",
       email: undefined,
       role: undefined,
     });
-  }, []);
-
-  const updateSettings = useCallback((partial: Partial<AppSettings>) => {
-    setSettings((prev) => ({ ...prev, ...partial }));
-  }, []);
+  }, [storageMode]);
 
   const getRunById = useCallback(
     (runId: string) => runs.find((r) => r.id === runId),
     [runs]
   );
 
-  const createChecklist = useCallback((draft: ChecklistDraft) => {
-    const now = new Date().toISOString();
-    const checklist: ChecklistTemplate = {
-      ...draft,
-      id: `custom-${generateId()}`,
-      isCustom: true,
-      createdAt: now,
-      updatedAt: now,
-    };
-    setCustomChecklists((prev) => [checklist, ...prev]);
-    return checklist;
-  }, []);
+  const createChecklist = useCallback(
+    async (draft: ChecklistDraft) => {
+      if (storageMode === "cloud") {
+        const checklist = await createCloudChecklist(draft);
+        await refreshData();
+        return checklist;
+      }
 
-  const updateChecklist = useCallback((id: string, draft: ChecklistDraft) => {
-    setCustomChecklists((prev) =>
-      prev.map((c) =>
-        c.id === id
-          ? { ...c, ...draft, updatedAt: new Date().toISOString() }
-          : c
-      )
-    );
-  }, []);
+      const now = new Date().toISOString();
+      const checklist: ChecklistTemplate = {
+        ...draft,
+        id: `custom-${generateId()}`,
+        isCustom: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      setCustomChecklists((prev) => [checklist, ...prev]);
+      return checklist;
+    },
+    [storageMode, refreshData]
+  );
 
-  const deleteChecklist = useCallback((id: string) => {
-    setCustomChecklists((prev) => prev.filter((c) => c.id !== id));
-  }, []);
+  const updateChecklistFn = useCallback(
+    async (id: string, draft: ChecklistDraft) => {
+      if (storageMode === "cloud") {
+        await updateCloudChecklist(id, draft);
+        await refreshData();
+        return;
+      }
+
+      setCustomChecklists((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? { ...c, ...draft, updatedAt: new Date().toISOString() }
+            : c
+        )
+      );
+    },
+    [storageMode, refreshData]
+  );
+
+  const deleteChecklistFn = useCallback(
+    async (id: string) => {
+      if (storageMode === "cloud") {
+        await deleteCloudChecklist(id);
+        await refreshData();
+        return;
+      }
+
+      setCustomChecklists((prev) => prev.filter((c) => c.id !== id));
+    },
+    [storageMode, refreshData]
+  );
 
   const resetAllData = useCallback(() => {
+    if (storageMode === "cloud") return;
     setSettings(defaultAppState.settings);
     setRuns([]);
     setCustomChecklists([]);
     setAssignments(seedDemoAssignments());
-  }, []);
+  }, [storageMode]);
 
-  const createAssignment = useCallback(
-    (input: {
+  const createAssignmentFn = useCallback(
+    async (input: {
       templateId: string;
       assignedToEmail: string;
       dueDate?: string;
       notes?: string;
     }) => {
+      if (storageMode === "cloud") {
+        const employee = cloudEmployees.find(
+          (e) => e.email === input.assignedToEmail
+        );
+        if (!employee) return;
+
+        await createCloudAssignment({
+          templateId: input.templateId,
+          assignedToId: employee.id,
+          dueDate: input.dueDate,
+          notes: input.notes,
+        });
+        await refreshData();
+        return;
+      }
+
       const employee = getDemoEmployees().find(
         (e) => e.email === input.assignedToEmail
       );
@@ -219,11 +374,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       setAssignments((prev) => [assignment, ...prev]);
     },
-    [settings.employeeName]
+    [storageMode, cloudEmployees, settings.employeeName, refreshData]
   );
 
   const startChecklist = useCallback(
-    (templateId: string, assignmentId?: string): ChecklistRun | null => {
+    async (
+      templateId: string,
+      assignmentId?: string
+    ): Promise<ChecklistRun | null> => {
+      if (storageMode === "cloud") {
+        const run = await startCloudRun(
+          assignmentId ? { assignmentId } : { templateId }
+        );
+        await refreshData();
+        return run;
+      }
+
       const template = resolveTemplate(templateId, customChecklists);
       if (!template) return null;
 
@@ -262,11 +428,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       return run;
     },
-    [customChecklists, runs, settings.employeeName]
+    [storageMode, customChecklists, runs, settings.employeeName, refreshData]
   );
 
   const startAssignment = useCallback(
-    (assignmentId: string) => {
+    async (assignmentId: string) => {
       const assignment = assignments.find((a) => a.id === assignmentId);
       if (!assignment) return null;
       return startChecklist(assignment.templateId, assignmentId);
@@ -279,6 +445,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       runId: string,
       completion: Omit<TaskCompletion, "completedAt" | "completedBy">
     ) => {
+      if (storageMode === "cloud") return;
+
       setRuns((prev) =>
         prev.map((run) => {
           if (run.id !== runId) return run;
@@ -322,44 +490,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
       );
     },
-    [customChecklists, settings.employeeName]
+    [storageMode, customChecklists, settings.employeeName]
   );
 
-  const removeTaskCompletion = useCallback((runId: string, itemId: string) => {
-    setRuns((prev) =>
-      prev.map((run) => {
-        if (run.id !== runId) return run;
+  const removeTaskCompletion = useCallback(
+    (runId: string, itemId: string) => {
+      if (storageMode === "cloud") return;
 
-        if (run.assignmentId) {
-          setAssignments((prevAssignments) =>
-            prevAssignments.map((a) =>
-              a.id === run.assignmentId
-                ? { ...a, status: "in_progress" as const }
-                : a
-            )
-          );
-        }
+      setRuns((prev) =>
+        prev.map((run) => {
+          if (run.id !== runId) return run;
 
-        return {
-          ...run,
-          status: "in_progress",
-          completedAt: undefined,
-          completions: run.completions.filter((c) => c.itemId !== itemId),
-        };
-      })
-    );
+          if (run.assignmentId) {
+            setAssignments((prevAssignments) =>
+              prevAssignments.map((a) =>
+                a.id === run.assignmentId
+                  ? { ...a, status: "in_progress" as const }
+                  : a
+              )
+            );
+          }
+
+          return {
+            ...run,
+            status: "in_progress",
+            completedAt: undefined,
+            completions: run.completions.filter((c) => c.itemId !== itemId),
+          };
+        })
+      );
+    },
+    [storageMode]
+  );
+
+  const getEmployees = useCallback((): AppEmployee[] => {
+    if (storageMode === "cloud") return cloudEmployees;
+    return getDemoEmployees();
+  }, [storageMode, cloudEmployees]);
+
+  const updateSettings = useCallback((partial: Partial<AppSettings>) => {
+    setSettings((prev) => ({ ...prev, ...partial }));
   }, []);
 
   const value = useMemo(
     () => ({
+      storageMode,
+      needsSeed,
       hydrated,
-      settings,
+      settings: activeSettings,
       runs,
-      customChecklists,
+      customChecklists:
+        storageMode === "cloud"
+          ? cloudTemplates.filter((t) => t.isCustom)
+          : customChecklists,
       assignments,
       isLoggedIn,
       login,
       logout,
+      refreshData,
       updateSettings,
       startChecklist,
       startAssignment,
@@ -369,21 +557,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getTemplateById,
       getAllTemplates: getAllTemplatesList,
       createChecklist,
-      updateChecklist,
-      deleteChecklist,
-      createAssignment,
+      updateChecklist: updateChecklistFn,
+      deleteChecklist: deleteChecklistFn,
+      createAssignment: createAssignmentFn,
       resetAllData,
-      getEmployees: getDemoEmployees,
+      getEmployees,
     }),
     [
+      storageMode,
+      needsSeed,
       hydrated,
-      settings,
+      activeSettings,
       runs,
+      cloudTemplates,
       customChecklists,
       assignments,
       isLoggedIn,
       login,
       logout,
+      refreshData,
       updateSettings,
       startChecklist,
       startAssignment,
@@ -393,10 +585,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getTemplateById,
       getAllTemplatesList,
       createChecklist,
-      updateChecklist,
-      deleteChecklist,
-      createAssignment,
+      updateChecklistFn,
+      deleteChecklistFn,
+      createAssignmentFn,
       resetAllData,
+      getEmployees,
     ]
   );
 

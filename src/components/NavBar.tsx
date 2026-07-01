@@ -32,8 +32,8 @@ export function NavBar() {
         { href: "/settings", label: "Settings", icon: Settings },
       ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push("/login");
   };
 

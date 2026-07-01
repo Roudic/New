@@ -37,8 +37,8 @@ export default function ChecklistDetailPage({
     );
   }
 
-  const handleStart = () => {
-    const run = startChecklist(template.id);
+  const handleStart = async () => {
+    const run = await startChecklist(template.id);
     if (run) router.push(`/run/${run.id}`);
   };
 

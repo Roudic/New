@@ -72,6 +72,7 @@ export async function POST(request: Request) {
     include: {
       completions: true,
       template: { include: { items: true } },
+      user: { select: { id: true, name: true } },
     },
   });
 
@@ -90,6 +91,7 @@ export async function GET() {
     include: {
       completions: true,
       template: { include: { items: true } },
+      user: { select: { id: true, name: true } },
     },
     orderBy: { startedAt: "desc" },
     take: 50,

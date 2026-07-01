@@ -23,8 +23,8 @@ export default function EmployeeDashboardPage() {
   const active = myAssignments.filter((a) => a.status === "in_progress");
   const done = myAssignments.filter((a) => a.status === "completed");
 
-  const handleStart = (assignmentId: string) => {
-    const run = startAssignment(assignmentId);
+  const handleStart = async (assignmentId: string) => {
+    const run = await startAssignment(assignmentId);
     if (run) router.push(`/run/${run.id}`);
   };
 

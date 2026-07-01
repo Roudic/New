@@ -7,27 +7,41 @@ import { useApp } from "@/context/AppContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, isLoggedIn, settings } = useApp();
+  const { login, isLoggedIn, settings, storageMode, needsSeed } = useApp();
   const [email, setEmail] = useState("admin@joltcheck.com");
   const [password, setPassword] = useState("admin123");
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (isLoggedIn) {
     router.replace(settings.role === "ADMIN" ? "/admin" : "/employee");
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
 
-    const ok = login(email, password);
-    if (!ok) {
-      setError("Invalid email or password.");
-      return;
+    try {
+      const ok = await login(email, password);
+      if (!ok) {
+        setError(
+          needsSeed
+            ? "Database is empty. Run db:seed or POST /api/setup before signing in."
+            : "Invalid email or password."
+        );
+        return;
+      }
+
+      const dest = email.toLowerCase().includes("admin") ? "/admin" : "/employee";
+      router.push(dest);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Sign in failed. Check database configuration."
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    const user = email.toLowerCase().includes("admin") ? "/admin" : "/employee";
-    router.push(user);
   };
 
   return (
@@ -48,10 +62,19 @@ export default function LoginPage() {
               </div>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-white/85">
-              Works instantly on your phone — no database setup required. Data
-              saves on this device.
+              {storageMode === "cloud"
+                ? "Connected to cloud database — team data syncs across devices."
+                : "Offline demo mode — data saves on this device only."}
             </p>
           </div>
+
+          {needsSeed && storageMode === "cloud" && (
+            <div className="border-b border-amber-100 bg-amber-50 px-8 py-4 text-sm text-amber-900">
+              Database is connected but empty. Run{" "}
+              <code className="rounded bg-amber-100 px-1">npm run db:seed</code> or{" "}
+              <code className="rounded bg-amber-100 px-1">POST /api/setup</code> once.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4 p-8">
             <div>
@@ -94,8 +117,8 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button type="submit" className="btn-primary w-full">
-              Sign In
+            <button type="submit" className="btn-primary w-full" disabled={submitting}>
+              {submitting ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
@@ -109,6 +132,11 @@ export default function LoginPage() {
               Employee: <span className="font-mono text-xs">alex@store.com</span> /{" "}
               <span className="font-mono text-xs">employee123</span>
             </p>
+            {storageMode === "local" && (
+              <p className="mt-3 text-xs text-slate-400">
+                Tip: add DATABASE_URL on Vercel to sync data across phones.
+              </p>
+            )}
           </div>
         </div>
       </div>
