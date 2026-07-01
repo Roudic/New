@@ -44,10 +44,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [runs, setRuns] = useState<ChecklistRun[]>([]);
 
   useEffect(() => {
-    const state = loadAppState();
-    setSettings(state.settings);
-    setRuns(state.runs);
-    setHydrated(true);
+    try {
+      const state = loadAppState();
+      setSettings(state.settings);
+      setRuns(state.runs);
+    } catch {
+      // Storage can fail in private browsing; still show the app.
+    } finally {
+      setHydrated(true);
+    }
   }, []);
 
   useEffect(() => {

@@ -22,6 +22,19 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Use on your phone (same Wi-Fi)
+
+1. Run `npm run dev` on your computer.
+2. Look in the terminal for the **Phone** URL (e.g. `http://192.168.1.42:3000`).
+3. Open that URL in your phone browser — **not** `localhost`.
+
+If it still won't load:
+- Make sure phone and computer are on the **same Wi-Fi**
+- On Windows, set your Wi-Fi network to **Private** (not Public)
+- Allow port 3000 through your firewall if prompted
+
+For photo tasks over Wi-Fi, some browsers require HTTPS. If the camera won't open, use file upload instead or deploy to Vercel for a secure URL.
+
 ## Tech Stack
 
 - Next.js 14 (App Router)
