@@ -1,10 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ChecklistBuilder } from "@/components/ChecklistBuilder";
 import { PageHeader } from "@/components/PageHeader";
-import { useApp } from "@/context/AppContext";
+import type { ChecklistDraft, ChecklistTemplate } from "@/lib/types";
 
 export default function EditChecklistPage({
   params,
@@ -12,17 +13,19 @@ export default function EditChecklistPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const { getTemplateById, updateChecklist, deleteChecklist } = useApp();
-  const template = getTemplateById(params.id);
+  const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/checklists/${params.id}`)
+      .then((r) => r.json())
+      .then(setTemplate)
+      .catch(() => setTemplate(null));
+  }, [params.id]);
 
   if (!template) {
     return (
       <AppShell>
-        <PageHeader
-          title="Checklist not found"
-          backHref="/checklists"
-          backLabel="All checklists"
-        />
+        <PageHeader title="Loading..." backHref="/checklists" backLabel="Back" />
       </AppShell>
     );
   }
@@ -32,18 +35,8 @@ export default function EditChecklistPage({
       <AppShell>
         <PageHeader
           title="Built-in templates can't be edited"
-          description="Duplicate this checklist by creating your own version with the builder."
           backHref={`/checklists/${template.id}`}
-          backLabel="Back to checklist"
-          action={
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => router.push("/checklists/new")}
-            >
-              Create Custom Checklist
-            </button>
-          }
+          backLabel="Back"
         />
       </AppShell>
     );
@@ -54,27 +47,25 @@ export default function EditChecklistPage({
       <PageHeader
         eyebrow="Checklist Builder"
         title={`Edit ${template.name}`}
-        description="Update tasks, instructions, schedule, and requirements for your team."
         backHref={`/checklists/${template.id}`}
-        backLabel="Back to checklist"
+        backLabel="Back"
       />
 
       <ChecklistBuilder
         initial={template}
         submitLabel="Save Changes"
-        onSave={(draft) => {
-          updateChecklist(template.id, draft);
+        onSave={async (draft: ChecklistDraft) => {
+          await fetch(`/api/checklists/${template.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(draft),
+          });
           router.push(`/checklists/${template.id}`);
         }}
-        onDelete={() => {
-          if (
-            confirm(
-              `Delete "${template.name}"? This cannot be undone. Completed runs will stay in history.`
-            )
-          ) {
-            deleteChecklist(template.id);
-            router.push("/checklists");
-          }
+        onDelete={async () => {
+          if (!confirm(`Delete "${template.name}"?`)) return;
+          await fetch(`/api/checklists/${template.id}`, { method: "DELETE" });
+          router.push("/checklists");
         }}
       />
     </AppShell>

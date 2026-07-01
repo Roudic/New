@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Calendar,
   Clock,
@@ -10,10 +11,9 @@ import {
   Play,
   Sparkles,
 } from "lucide-react";
-import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
-import { useApp } from "@/context/AppContext";
+import type { ChecklistTemplate } from "@/lib/types";
 import {
   categoryBorder,
   categoryLabel,
@@ -27,34 +27,31 @@ export default function ChecklistDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const { getTemplateById, startChecklist, runs } = useApp();
-  const template = getTemplateById(params.id);
-
-  const existingRun = runs.find(
-    (r) => r.templateId === params.id && r.status === "in_progress"
-  );
+  const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
 
   useEffect(() => {
-    if (existingRun) {
-      router.replace(`/run/${existingRun.id}`);
-    }
-  }, [existingRun, router]);
+    fetch(`/api/checklists/${params.id}`)
+      .then((r) => r.json())
+      .then(setTemplate)
+      .catch(() => setTemplate(null));
+  }, [params.id]);
 
   if (!template) {
     return (
       <AppShell>
-        <PageHeader
-          title="Checklist not found"
-          backHref="/checklists"
-          backLabel="All checklists"
-        />
+        <PageHeader title="Loading..." backHref="/checklists" backLabel="Back" />
       </AppShell>
     );
   }
 
-  const handleStart = () => {
-    const run = startChecklist(template.id);
-    if (run) router.push(`/run/${run.id}`);
+  const handleStart = async () => {
+    const res = await fetch("/api/runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ templateId: template.id }),
+    });
+    const run = await res.json();
+    router.push(`/run/${run.id}`);
   };
 
   const requiredCount = template.items.filter((i) => i.required).length;
@@ -70,10 +67,7 @@ export default function ChecklistDetailPage({
         action={
           <div className="flex flex-wrap gap-2">
             {template.isCustom && (
-              <Link
-                href={`/checklists/${template.id}/edit`}
-                className="btn-secondary"
-              >
+              <Link href={`/checklists/${template.id}/edit`} className="btn-secondary">
                 <Pencil className="h-4 w-4" />
                 Edit
               </Link>
@@ -87,116 +81,63 @@ export default function ChecklistDetailPage({
       />
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="glass-panel p-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-brand-50 p-2 text-brand-600">
-              <ListChecks className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Tasks
-              </p>
-              <p className="text-lg font-bold text-slate-900">
-                {template.items.length} total · {requiredCount} required
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="glass-panel p-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-amber-50 p-2 text-amber-600">
-              <Clock className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Est. Duration
-              </p>
-              <p className="text-lg font-bold text-slate-900">
-                ~{template.estimatedMinutes} minutes
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="glass-panel p-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600">
-              <Calendar className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Schedule
-              </p>
-              <p className="text-lg font-bold text-slate-900">
-                {scheduleLabel(template.schedule)}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="glass-panel p-4">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-violet-50 p-2 text-violet-600">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Source
-              </p>
-              <p className="text-lg font-bold text-slate-900">
-                {template.isCustom ? "Custom" : "Built-in"}
-              </p>
-            </div>
-          </div>
-        </div>
+        <Stat icon={ListChecks} label="Tasks" value={`${template.items.length} · ${requiredCount} required`} />
+        <Stat icon={Clock} label="Duration" value={`~${template.estimatedMinutes} min`} />
+        <Stat icon={Calendar} label="Schedule" value={scheduleLabel(template.schedule)} />
+        <Stat icon={Sparkles} label="Source" value={template.isCustom ? "Custom" : "Built-in"} />
       </div>
 
-      <section className="glass-panel overflow-hidden">
-        <div className={`border-b border-slate-100 px-6 py-5 ${categoryBorder(template.category)} border-l-4`}>
+      <section className={`glass-panel overflow-hidden ${categoryBorder(template.category)} border-l-4`}>
+        <div className="border-b border-slate-100 px-6 py-5">
           <h2 className="section-title">Task Breakdown</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Every task records who completed it and when for full accountability.
-          </p>
         </div>
-
         <div className="divide-y divide-slate-100">
           {template.items.map((item, index) => (
             <div key={item.id} className="flex gap-4 px-6 py-4">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-sm font-bold text-slate-700">
                 {index + 1}
               </div>
-              <div className="min-w-0 flex-1">
+              <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-semibold text-slate-900">{item.title}</h3>
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
                     {taskTypeLabel(item.type)}
                   </span>
-                  {item.required && (
-                    <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">
-                      Required
-                    </span>
-                  )}
                 </div>
                 {item.description && (
-                  <p className="mt-1 text-sm leading-relaxed text-slate-600">
-                    {item.description}
-                  </p>
+                  <p className="mt-1 text-sm text-slate-600">{item.description}</p>
                 )}
-                {item.trainingNote && (
-                  <p className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">
-                    {item.trainingNote}
-                  </p>
-                )}
-                {item.type === "temperature" &&
-                  item.minTemp !== undefined &&
-                  item.maxTemp !== undefined && (
-                    <p className="mt-2 text-xs font-medium text-slate-500">
-                      Acceptable range: {item.minTemp}°F – {item.maxTemp}°F
-                    </p>
-                  )}
               </div>
             </div>
           ))}
         </div>
       </section>
     </AppShell>
+  );
+}
+
+function Stat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="glass-panel p-4">
+      <div className="flex items-center gap-3">
+        <div className="rounded-xl bg-brand-50 p-2 text-brand-600">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {label}
+          </p>
+          <p className="text-sm font-bold text-slate-900">{value}</p>
+        </div>
+      </div>
+    </div>
   );
 }

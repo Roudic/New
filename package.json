@@ -4,24 +4,36 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/print-mobile-url.js && next dev -H 0.0.0.0",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start -H 0.0.0.0",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^1.22.0",
     "next": "14.2.35",
+    "next-auth": "^4.24.14",
     "react": "^18",
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
+    "prisma": "^5.22.0",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }

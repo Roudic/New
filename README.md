@@ -1,68 +1,76 @@
 # JoltCheck
 
-A Jolt-inspired digital operations checklist app for deskless teams. Replace paper checklists with timestamped, accountable workflows.
+A Jolt-inspired operations checklist platform with **login**, **admin assignments**, and a **team progress dashboard**.
 
 ## Features
 
-- **Pre-built templates** — Opening, closing, food safety, shift handoff, cleaning, and weekly audit checklists
-- **Multiple task types** — Checkbox, yes/no, temperature logs, text notes, photo proof, and numeric entries
-- **Team accountability** — Every completion records employee name and timestamp
-- **Photo proof** — Require camera/upload evidence to eliminate pencil-whipping
-- **Temperature validation** — Out-of-range temps flagged with corrective action prompts
-- **Operations dashboard** — Track in-progress, due, and completed checklists at a glance
-- **Completion history** — Full audit trail of past runs
-- **Mobile-first UI** — Bottom nav on phones, responsive layout on tablets and desktop
-- **Custom checklist builder** — Create, edit, and delete your own checklists with any task types
+- **Login system** — Admin and employee roles with secure sessions
+- **Admin dashboard** — Track pending, in-progress, and completed assignments per employee
+- **Assign checklists** — Admins assign any checklist to team members with due dates and notes
+- **Employee portal** — See assigned work, start checklists, complete tasks with photo/temp proof
+- **Custom checklist builder** — Admins create and edit operational checklists
+- **Built-in templates** — Opening, closing, food safety, and more
+- **Completion history** — Full audit trail with timestamps
 
-## Getting Started
+## Demo Accounts
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@joltcheck.com` | `admin123` |
+| Employee | `alex@store.com` | `employee123` |
+| Employee | `sam@store.com` | `employee123` |
+
+## Local Setup
 
 ```bash
 npm install
+cp .env.example .env
+npm run db:push
+npm run db:seed
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open http://localhost:3000 — you'll be redirected to `/login`.
 
-### Use on your phone (same Wi-Fi)
+## Deploy on Vercel
 
-1. Run `npm run dev` on your computer.
-2. Look in the terminal for the **Phone** URL (e.g. `http://192.168.1.42:3000`).
-3. Open that URL in your phone browser — **not** `localhost`.
+1. Import the repo at [vercel.com/new](https://vercel.com/new)
+2. Add environment variables:
+   - `NEXTAUTH_SECRET` — long random string
+   - `NEXTAUTH_URL` — your Vercel URL (e.g. `https://your-app.vercel.app`)
+   - `DATABASE_URL` — see database note below
+3. Deploy, then run `npm run db:push && npm run db:seed` once against your production database
 
-If it still won't load:
-- Make sure phone and computer are on the **same Wi-Fi**
-- On Windows, set your Wi-Fi network to **Private** (not Public)
-- Allow port 3000 through your firewall if prompted
+### Database for production
 
-For photo tasks over Wi-Fi, some browsers require HTTPS. If the camera won't open, use file upload instead or deploy to Vercel for a secure URL.
+Local dev uses SQLite (`file:./dev.db`). **Vercel requires a hosted database** because serverless functions can't persist SQLite files.
 
-## Deploy (recommended for phone use)
+Recommended: [Neon](https://neon.tech) (free PostgreSQL)
 
-The easiest way to use JoltCheck on your phone is to deploy it — you get an HTTPS link that works anywhere.
+1. Create a Neon project and copy the connection string
+2. Change `provider` in `prisma/schema.prisma` from `sqlite` to `postgresql`
+3. Set `DATABASE_URL` on Vercel to your Neon connection string
+4. Run `npm run db:push && npm run db:seed` locally with that URL, or use Neon's SQL console
 
-### Vercel (free, ~2 minutes)
+Pushes to `main` auto-deploy on Vercel if the project is connected.
 
-1. Go to **[vercel.com/new](https://vercel.com/new)** and sign in with GitHub.
-2. Import the **`Roudic/New`** repository.
-3. Leave all settings as default and click **Deploy**.
-4. When it finishes, open the URL Vercel gives you on your phone (e.g. `https://new.vercel.app`).
+## Admin Workflow
 
-No environment variables or database are required. Checklist data stays in each user's browser.
+1. Sign in as admin
+2. **Dashboard** — View team completion rates and recent activity
+3. **Assign** — Pick a checklist and assign it to an employee
+4. **Create** — Build custom checklists with the checklist builder
 
-**One-click import:** [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FRoudic%2FNew&project-name=joltcheck&repository-name=New)
+## Employee Workflow
+
+1. Sign in as employee
+2. See assigned checklists on **My Tasks**
+3. Start or continue a checklist
+4. Complete tasks (photos, temperatures, etc.)
+5. View finished work in **History**
 
 ## Tech Stack
 
-- Next.js 14 (App Router)
-- TypeScript
-- Tailwind CSS
-- Local storage for persistence (no backend required)
-
-## Usage
-
-1. Go to **Settings** and enter your name and location.
-2. Tap **Create** to build your own checklist, or browse **Checklists** for built-in templates.
-3. Complete each task — photos and temperatures are validated inline.
-4. Review completed runs in **History**.
-
-Data is stored in your browser's local storage.
+- Next.js 14, TypeScript, Tailwind CSS
+- NextAuth (credentials login)
+- Prisma + SQLite (local) / PostgreSQL (production)
