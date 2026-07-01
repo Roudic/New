@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ChecklistBuilder } from "@/components/ChecklistBuilder";
 import { PageHeader } from "@/components/PageHeader";
-import type { ChecklistDraft, ChecklistTemplate } from "@/lib/types";
+import { useApp } from "@/context/AppContext";
+import type { ChecklistDraft } from "@/lib/types";
 
 export default function EditChecklistPage({
   params,
@@ -13,19 +13,21 @@ export default function EditChecklistPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/checklists/${params.id}`)
-      .then((r) => r.json())
-      .then(setTemplate)
-      .catch(() => setTemplate(null));
-  }, [params.id]);
+  const { settings, getTemplateById, updateChecklist, deleteChecklist } = useApp();
+  const template = getTemplateById(params.id);
 
   if (!template) {
     return (
       <AppShell>
         <PageHeader title="Loading..." backHref="/checklists" backLabel="Back" />
+      </AppShell>
+    );
+  }
+
+  if (settings.role !== "ADMIN") {
+    return (
+      <AppShell>
+        <PageHeader title="Admin access required" backHref="/employee" backLabel="Back" />
       </AppShell>
     );
   }
@@ -48,23 +50,18 @@ export default function EditChecklistPage({
         eyebrow="Checklist Builder"
         title={`Edit ${template.name}`}
         backHref={`/checklists/${template.id}`}
-        backLabel="Back"
+        backLabel="Checklist details"
       />
 
       <ChecklistBuilder
         initial={template}
         submitLabel="Save Changes"
-        onSave={async (draft: ChecklistDraft) => {
-          await fetch(`/api/checklists/${template.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(draft),
-          });
+        onSave={(draft: ChecklistDraft) => {
+          updateChecklist(template.id, draft);
           router.push(`/checklists/${template.id}`);
         }}
-        onDelete={async () => {
-          if (!confirm(`Delete "${template.name}"?`)) return;
-          await fetch(`/api/checklists/${template.id}`, { method: "DELETE" });
+        onDelete={() => {
+          deleteChecklist(template.id);
           router.push("/checklists");
         }}
       />

@@ -1,4 +1,4 @@
-import type { AppState, ChecklistRun } from "./types";
+import type { AppState, Assignment, ChecklistRun } from "./types";
 
 const STORAGE_KEY = "jolt-checklist-app";
 
@@ -9,6 +9,7 @@ export const defaultAppState: AppState = {
   },
   runs: [],
   customChecklists: [],
+  assignments: [],
 };
 
 export function loadAppState(): AppState {
@@ -24,6 +25,7 @@ export function loadAppState(): AppState {
       ...defaultAppState,
       ...parsed,
       customChecklists: parsed.customChecklists ?? [],
+      assignments: parsed.assignments ?? [],
     };
   } catch {
     return defaultAppState;
@@ -50,5 +52,16 @@ export function getCompletedRuns(runs: ChecklistRun[]): ChecklistRun[] {
       (a, b) =>
         new Date(b.completedAt ?? b.startedAt).getTime() -
         new Date(a.completedAt ?? a.startedAt).getTime()
+    );
+}
+
+export function getAssignmentsForUser(
+  assignments: Assignment[],
+  email: string
+): Assignment[] {
+  return assignments
+    .filter((a) => a.assignedToEmail === email.toLowerCase())
+    .sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 }

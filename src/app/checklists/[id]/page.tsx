@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   Calendar,
   Clock,
@@ -13,7 +12,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
-import type { ChecklistTemplate } from "@/lib/types";
+import { useApp } from "@/context/AppContext";
 import {
   categoryBorder,
   categoryLabel,
@@ -27,34 +26,24 @@ export default function ChecklistDetailPage({
   params: { id: string };
 }) {
   const router = useRouter();
-  const [template, setTemplate] = useState<ChecklistTemplate | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/checklists/${params.id}`)
-      .then((r) => r.json())
-      .then(setTemplate)
-      .catch(() => setTemplate(null));
-  }, [params.id]);
+  const { settings, getTemplateById, startChecklist } = useApp();
+  const template = getTemplateById(params.id);
 
   if (!template) {
     return (
       <AppShell>
-        <PageHeader title="Loading..." backHref="/checklists" backLabel="Back" />
+        <PageHeader title="Checklist not found" backHref="/checklists" backLabel="Back" />
       </AppShell>
     );
   }
 
-  const handleStart = async () => {
-    const res = await fetch("/api/runs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId: template.id }),
-    });
-    const run = await res.json();
-    router.push(`/run/${run.id}`);
+  const handleStart = () => {
+    const run = startChecklist(template.id);
+    if (run) router.push(`/run/${run.id}`);
   };
 
   const requiredCount = template.items.filter((i) => i.required).length;
+  const isAdmin = settings.role === "ADMIN";
 
   return (
     <AppShell>
@@ -65,18 +54,20 @@ export default function ChecklistDetailPage({
         title={template.name}
         description={template.description}
         action={
-          <div className="flex flex-wrap gap-2">
-            {template.isCustom && (
-              <Link href={`/checklists/${template.id}/edit`} className="btn-secondary">
-                <Pencil className="h-4 w-4" />
-                Edit
-              </Link>
-            )}
-            <button type="button" className="btn-primary" onClick={handleStart}>
-              <Play className="h-4 w-4" />
-              Start Checklist
-            </button>
-          </div>
+          isAdmin ? (
+            <div className="flex flex-wrap gap-2">
+              {template.isCustom && (
+                <Link href={`/checklists/${template.id}/edit`} className="btn-secondary">
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Link>
+              )}
+              <button type="button" className="btn-primary" onClick={handleStart}>
+                <Play className="h-4 w-4" />
+                Start Checklist
+              </button>
+            </div>
+          ) : undefined
         }
       />
 
@@ -99,13 +90,23 @@ export default function ChecklistDetailPage({
               </div>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-semibold text-slate-900">{item.title}</h3>
-                  <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
+                  <p className="font-semibold text-slate-900">{item.title}</p>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
                     {taskTypeLabel(item.type)}
                   </span>
+                  {item.required && (
+                    <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold uppercase text-rose-700">
+                      Required
+                    </span>
+                  )}
                 </div>
                 {item.description && (
                   <p className="mt-1 text-sm text-slate-600">{item.description}</p>
+                )}
+                {item.trainingNote && (
+                  <p className="mt-2 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-800">
+                    {item.trainingNote}
+                  </p>
                 )}
               </div>
             </div>
@@ -121,23 +122,17 @@ function Stat({
   label,
   value,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: typeof ListChecks;
   label: string;
   value: string;
 }) {
   return (
     <div className="glass-panel p-4">
-      <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-brand-50 p-2 text-brand-600">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            {label}
-          </p>
-          <p className="text-sm font-bold text-slate-900">{value}</p>
-        </div>
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+        <Icon className="h-4 w-4" />
+        {label}
       </div>
+      <p className="mt-2 text-lg font-bold text-slate-900">{value}</p>
     </div>
   );
 }

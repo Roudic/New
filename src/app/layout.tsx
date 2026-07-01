@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { Providers } from "@/components/Providers";
+import { AppProvider } from "@/context/AppContext";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -12,7 +12,7 @@ const geistSans = localFont({
 export const metadata: Metadata = {
   title: "JoltCheck — Operations Checklists",
   description:
-    "Digital operational checklists with login, admin assignments, and team progress tracking.",
+    "Digital checklists with login, admin assignments, and team progress tracking.",
   appleWebApp: {
     capable: true,
     title: "JoltCheck",
@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} antialiased font-sans`}>
-        <Providers>{children}</Providers>
+        <AppProvider>{children}</AppProvider>
       </body>
     </html>
   );

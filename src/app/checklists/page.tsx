@@ -1,29 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { ChecklistCard } from "@/components/ChecklistCard";
 import { PageHeader } from "@/components/PageHeader";
-import type { ChecklistCategory, ChecklistTemplate } from "@/lib/types";
+import { useApp } from "@/context/AppContext";
+import type { ChecklistCategory } from "@/lib/types";
 import { categoryLabel } from "@/lib/utils";
 
 type Tab = "all" | "mine" | "templates";
 
 export default function ChecklistsPage() {
+  const { settings, getAllTemplates } = useApp();
   const [tab, setTab] = useState<Tab>("all");
   const [filter, setFilter] = useState<ChecklistCategory | "all">("all");
-  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
 
-  useEffect(() => {
-    fetch("/api/checklists")
-      .then((r) => r.json())
-      .then(setTemplates)
-      .catch(() => setTemplates([]));
-  }, []);
-
+  const templates = getAllTemplates();
   const customChecklists = templates.filter((t) => t.isCustom);
+  const isAdmin = settings.role === "ADMIN";
 
   const filtered = useMemo(() => {
     let list = templates;
@@ -51,10 +47,12 @@ export default function ChecklistsPage() {
         title="Operational Checklists"
         description="Built-in templates and custom checklists you can assign to your team."
         action={
-          <Link href="/checklists/new" className="btn-primary">
-            <Plus className="h-4 w-4" />
-            Create Checklist
-          </Link>
+          isAdmin ? (
+            <Link href="/checklists/new" className="btn-primary">
+              <Plus className="h-4 w-4" />
+              Create Checklist
+            </Link>
+          ) : undefined
         }
       />
 
@@ -102,15 +100,22 @@ export default function ChecklistsPage() {
         <div className="glass-panel mb-6 py-12 text-center">
           <Sparkles className="mx-auto h-8 w-8 text-violet-500" />
           <p className="mt-3 font-bold text-slate-900">No custom checklists yet</p>
-          <Link href="/checklists/new" className="btn-primary mt-4 inline-flex">
-            Create Checklist
-          </Link>
+          {isAdmin && (
+            <Link href="/checklists/new" className="btn-primary mt-4 inline-flex">
+              Create Checklist
+            </Link>
+          )}
         </div>
       )}
 
       <div className="grid gap-5 lg:grid-cols-2">
         {filtered.map((template) => (
-          <ChecklistCard key={template.id} template={template} showStart showEdit />
+          <ChecklistCard
+            key={template.id}
+            template={template}
+            showStart={isAdmin}
+            showEdit={isAdmin}
+          />
         ))}
       </div>
     </AppShell>

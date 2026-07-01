@@ -1,17 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { AppShell } from "@/components/AppShell";
 import { ChecklistBuilder } from "@/components/ChecklistBuilder";
 import { PageHeader } from "@/components/PageHeader";
+import { useApp } from "@/context/AppContext";
 import type { ChecklistDraft } from "@/lib/types";
 
 export default function NewChecklistPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { settings, createChecklist } = useApp();
 
-  if (session?.user.role !== "ADMIN") {
+  if (settings.role !== "ADMIN") {
     return (
       <AppShell>
         <PageHeader title="Admin access required" backHref="/employee" backLabel="Back" />
@@ -31,13 +31,8 @@ export default function NewChecklistPage() {
 
       <ChecklistBuilder
         submitLabel="Create Checklist"
-        onSave={async (draft: ChecklistDraft) => {
-          const res = await fetch("/api/checklists", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(draft),
-          });
-          const checklist = await res.json();
+        onSave={(draft: ChecklistDraft) => {
+          const checklist = createChecklist(draft);
           router.push(`/checklists/${checklist.id}`);
         }}
       />

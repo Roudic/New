@@ -1,43 +1,33 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ClipboardList, Lock, Mail } from "lucide-react";
+import { useApp } from "@/context/AppContext";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const { login, isLoggedIn, settings } = useApp();
+  const [email, setEmail] = useState("admin@joltcheck.com");
+  const [password, setPassword] = useState("admin123");
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  if (isLoggedIn) {
+    router.replace(settings.role === "ADMIN" ? "/admin" : "/employee");
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setLoading(false);
-
-    if (result?.error) {
-      if (result.error.includes("DATABASE_URL")) {
-        setError("Server database is not configured. Check Vercel env vars.");
-      } else if (result.error.includes("Database connection failed")) {
-        setError("Database connection failed. The app may need to be seeded.");
-      } else {
-        setError("Invalid email or password.");
-      }
+    const ok = login(email, password);
+    if (!ok) {
+      setError("Invalid email or password.");
       return;
     }
 
-    router.refresh();
-    router.push("/");
+    const user = email.toLowerCase().includes("admin") ? "/admin" : "/employee";
+    router.push(user);
   };
 
   return (
@@ -58,8 +48,8 @@ export default function LoginPage() {
               </div>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-white/85">
-              Admins assign checklists and track team progress. Employees complete
-              assigned tasks with full accountability.
+              Works instantly on your phone — no database setup required. Data
+              saves on this device.
             </p>
           </div>
 
@@ -76,7 +66,6 @@ export default function LoginPage() {
                   className="field-input pl-10"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@joltcheck.com"
                   required
                 />
               </div>
@@ -94,7 +83,6 @@ export default function LoginPage() {
                   className="field-input pl-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
                   required
                 />
               </div>
@@ -106,8 +94,8 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button type="submit" className="btn-primary w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+            <button type="submit" className="btn-primary w-full">
+              Sign In
             </button>
           </form>
 

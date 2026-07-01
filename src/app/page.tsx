@@ -1,17 +1,25 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+"use client";
 
-export default async function HomePage() {
-  const session = await getServerSession(authOptions);
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useApp } from "@/context/AppContext";
 
-  if (!session) {
-    redirect("/login");
-  }
+export default function HomePage() {
+  const router = useRouter();
+  const { hydrated, isLoggedIn, settings } = useApp();
 
-  if (session.user.role === "ADMIN") {
-    redirect("/admin");
-  }
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!isLoggedIn) {
+      router.replace("/login");
+      return;
+    }
+    router.replace(settings.role === "ADMIN" ? "/admin" : "/employee");
+  }, [hydrated, isLoggedIn, settings.role, router]);
 
-  redirect("/employee");
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <p className="text-sm font-medium text-slate-600">Loading...</p>
+    </div>
+  );
 }

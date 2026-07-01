@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ClipboardList,
   LayoutDashboard,
@@ -12,11 +11,13 @@ import {
   UserCheck,
   Users,
 } from "lucide-react";
+import { useApp } from "@/context/AppContext";
 
 export function NavBar() {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
+  const router = useRouter();
+  const { settings, logout } = useApp();
+  const isAdmin = settings.role === "ADMIN";
 
   const navItems = isAdmin
     ? [
@@ -31,7 +32,10 @@ export function NavBar() {
         { href: "/settings", label: "Settings", icon: Settings },
       ];
 
-  if (!session) return null;
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
 
   return (
     <>
@@ -53,7 +57,7 @@ export function NavBar() {
 
           <div className="hidden items-center gap-2 md:flex">
             <span className="mr-2 text-sm font-medium text-slate-600">
-              {session.user?.name}
+              {settings.employeeName}
             </span>
             {navItems.map(({ href, label, icon: Icon }) => {
               const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -61,7 +65,7 @@ export function NavBar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold transition-all ${
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold ${
                     active
                       ? "bg-brand-50 text-brand-700 shadow-sm"
                       : "text-slate-600 hover:bg-slate-50"
@@ -78,11 +82,7 @@ export function NavBar() {
                 Create
               </Link>
             )}
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/login" })}
-              className="btn-secondary ml-1 py-2"
-            >
+            <button type="button" onClick={handleLogout} className="btn-secondary ml-1 py-2">
               <LogOut className="h-4 w-4" />
               Sign out
             </button>

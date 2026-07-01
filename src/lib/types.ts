@@ -58,6 +58,7 @@ export interface ChecklistRun {
   templateName: string;
   category: ChecklistCategory;
   schedule: ChecklistSchedule;
+  assignmentId?: string;
   startedAt: string;
   completedAt?: string;
   startedBy: string;
@@ -68,12 +69,30 @@ export interface ChecklistRun {
 export interface AppSettings {
   employeeName: string;
   locationName: string;
+  email?: string;
+  role?: "ADMIN" | "EMPLOYEE";
+}
+
+export type AssignmentStatus = "pending" | "in_progress" | "completed";
+
+export interface Assignment {
+  id: string;
+  templateId: string;
+  assignedToEmail: string;
+  assignedToName: string;
+  assignedByName: string;
+  dueDate?: string;
+  status: AssignmentStatus;
+  notes?: string;
+  createdAt: string;
+  activeRunId?: string;
 }
 
 export interface AppState {
   settings: AppSettings;
   runs: ChecklistRun[];
   customChecklists: ChecklistTemplate[];
+  assignments: Assignment[];
 }
 
 export type ChecklistDraft = Omit<

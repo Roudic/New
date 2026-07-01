@@ -1,67 +1,30 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
-
-interface Employee {
-  id: string;
-  name: string;
-  email: string;
-}
-
-interface Template {
-  id: string;
-  name: string;
-}
+import { useApp } from "@/context/AppContext";
 
 export default function AssignChecklistPage() {
   const router = useRouter();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [templateId, setTemplateId] = useState("");
-  const [assignedToId, setAssignedToId] = useState("");
+  const { getAllTemplates, getEmployees, createAssignment } = useApp();
+  const templates = getAllTemplates();
+  const employees = getEmployees();
+
+  const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const [assignedToEmail, setAssignedToEmail] = useState(employees[0]?.email ?? "");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/users").then((r) => r.json()),
-      fetch("/api/checklists").then((r) => r.json()),
-    ]).then(([users, checklistData]) => {
-      setEmployees(users);
-      setTemplates(checklistData);
-      if (checklistData[0]) setTemplateId(checklistData[0].id);
-      if (users[0]) setAssignedToId(users[0].id);
-    });
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    setError(null);
-
-    const res = await fetch("/api/assignments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        templateId,
-        assignedToId,
-        dueDate: dueDate || null,
-        notes,
-      }),
+    createAssignment({
+      templateId,
+      assignedToEmail,
+      dueDate: dueDate || undefined,
+      notes: notes || undefined,
     });
-
-    setSaving(false);
-
-    if (!res.ok) {
-      setError("Could not create assignment.");
-      return;
-    }
-
     router.push("/admin");
   };
 
@@ -70,7 +33,7 @@ export default function AssignChecklistPage() {
       <PageHeader
         eyebrow="Admin"
         title="Assign Checklist"
-        description="Choose a checklist and assign it to a team member with an optional due date."
+        description="Assign a checklist to a team member."
         backHref="/admin"
         backLabel="Dashboard"
       />
@@ -102,12 +65,12 @@ export default function AssignChecklistPage() {
           <select
             id="employee"
             className="field-input"
-            value={assignedToId}
-            onChange={(e) => setAssignedToId(e.target.value)}
+            value={assignedToEmail}
+            onChange={(e) => setAssignedToEmail(e.target.value)}
             required
           >
             {employees.map((e) => (
-              <option key={e.id} value={e.id}>
+              <option key={e.email} value={e.email}>
                 {e.name} ({e.email})
               </option>
             ))}
@@ -129,25 +92,18 @@ export default function AssignChecklistPage() {
 
         <div>
           <label className="field-label" htmlFor="notes">
-            Notes for employee
+            Notes
           </label>
           <textarea
             id="notes"
             className="field-input min-h-[96px]"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any special instructions..."
           />
         </div>
 
-        {error && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-            {error}
-          </div>
-        )}
-
-        <button type="submit" className="btn-primary" disabled={saving}>
-          {saving ? "Assigning..." : "Assign Checklist"}
+        <button type="submit" className="btn-primary">
+          Assign Checklist
         </button>
       </form>
     </AppShell>

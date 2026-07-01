@@ -1,12 +1,12 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useApp } from "@/context/AppContext";
 import { NavBar } from "@/components/NavBar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { status } = useSession();
+  const { hydrated, isLoggedIn } = useApp();
 
-  if (status === "loading") {
+  if (!hydrated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background bg-hero-gradient">
         <div className="glass-panel px-8 py-6 text-center">
@@ -15,6 +15,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  if (!isLoggedIn) {
+    return <>{children}</>;
   }
 
   return (
