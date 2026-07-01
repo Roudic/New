@@ -35,6 +35,21 @@ If it still won't load:
 
 For photo tasks over Wi-Fi, some browsers require HTTPS. If the camera won't open, use file upload instead or deploy to Vercel for a secure URL.
 
+## Deploy (recommended for phone use)
+
+The easiest way to use JoltCheck on your phone is to deploy it — you get an HTTPS link that works anywhere.
+
+### Vercel (free, ~2 minutes)
+
+1. Go to **[vercel.com/new](https://vercel.com/new)** and sign in with GitHub.
+2. Import the **`Roudic/New`** repository.
+3. Leave all settings as default and click **Deploy**.
+4. When it finishes, open the URL Vercel gives you on your phone (e.g. `https://new.vercel.app`).
+
+No environment variables or database are required. Checklist data stays in each user's browser.
+
+**One-click import:** [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FRoudic%2FNew&project-name=joltcheck&repository-name=New)
+
 ## Tech Stack
 
 - Next.js 14 (App Router)
