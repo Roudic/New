@@ -1,9 +1,36 @@
+import { execSync } from "child_process";
 import { NextResponse } from "next/server";
 import { getDatabaseHint, prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { checklistTemplates } from "@/lib/templates";
 
 export const dynamic = "force-dynamic";
+
+function ensureSchema() {
+  try {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
+      env: process.env,
+      stdio: "pipe",
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Schema push failed";
+    throw new Error(message);
+  }
+}
+
+async function countUsersSafely() {
+  try {
+    return await prisma.user.count();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message.includes("no such table")) {
+      ensureSchema();
+      return await prisma.user.count();
+    }
+    throw error;
+  }
+}
 
 export async function POST(request: Request) {
   const secret = request.headers.get("x-setup-secret");
@@ -16,11 +43,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: configError }, { status: 503 });
   }
 
-  const existingUsers = await prisma.user.count();
-  if (existingUsers > 0) {
+  try {
+    const existingUsers = await countUsersSafely();
+    if (existingUsers > 0) {
+      return NextResponse.json(
+        { error: "Database already seeded", users: existingUsers },
+        { status: 409 }
+      );
+    }
+  } catch (error) {
     return NextResponse.json(
-      { error: "Database already seeded", users: existingUsers },
-      { status: 409 }
+      {
+        error: "Could not prepare database schema.",
+        detail: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
     );
   }
 
