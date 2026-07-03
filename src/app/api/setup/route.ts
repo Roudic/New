@@ -1,4 +1,5 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
+import path from "path";
 import { NextResponse } from "next/server";
 import { getDatabaseHint, prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
@@ -7,15 +8,24 @@ import { checklistTemplates } from "@/lib/templates";
 export const dynamic = "force-dynamic";
 
 function ensureSchema() {
+  const prismaBin = path.join(process.cwd(), "node_modules", ".bin", "prisma");
   try {
-    execSync("npx prisma db push --skip-generate --accept-data-loss", {
-      env: process.env,
-      stdio: "pipe",
-    });
+    execFileSync(
+      prismaBin,
+      ["migrate", "deploy"],
+      {
+        env: process.env,
+        stdio: "pipe",
+      }
+    );
   } catch (error) {
+    const stderr =
+      error && typeof error === "object" && "stderr" in error
+        ? String((error as { stderr: Buffer }).stderr)
+        : "";
     const message =
-      error instanceof Error ? error.message : "Schema push failed";
-    throw new Error(message);
+      error instanceof Error ? error.message : "Schema migration failed";
+    throw new Error(stderr || message);
   }
 }
 
