@@ -24,17 +24,24 @@ A JARVIS-like AI assistant that can control your computer through natural langua
 
 ## Quick Start
 
-### 1. Install
+### Option A — from repo root
+
+```bash
+npm run jarvis:setup   # install + build (first time only)
+npm run jarvis         # starts server and opens browser
+```
+
+### Option B — from jarvis folder
 
 ```bash
 cd jarvis
-npm install
-cp .env.example .env
+npm run setup          # install + build (first time only)
+npm run dev            # starts server and opens browser
 ```
 
-### 2. Configure
+### Configure API key
 
-Edit `.env`:
+Edit `jarvis/.env`:
 
 ```env
 OPENAI_API_KEY=sk-your-key-here
@@ -50,21 +57,27 @@ OPENAI_BASE_URL=http://localhost:11434/v1
 OPENAI_MODEL=llama3.2
 ```
 
-### 3. Run
+### Open in browser
 
-**Web UI + API server:**
+JARVIS runs on **http://localhost:3001** (not 3000).
 
-```bash
-npm run dev
-```
+If the browser doesn't open automatically, paste that URL manually.
 
-Open http://localhost:3001
-
-**CLI chat:**
+**CLI chat** (no browser needed):
 
 ```bash
-npm run cli
+cd jarvis && npm run cli
 ```
+
+### Troubleshooting "localhost not opening"
+
+| Problem | Fix |
+|---------|-----|
+| Wrong port | Use **3001**, not 3000 |
+| Ran `npm run dev` from repo root | That starts JoltCheck. Use `npm run jarvis` instead |
+| Blank page | Run `cd jarvis && npm run build:web` |
+| Port in use | Run `PORT=3002 npm run dev` |
+| Connection refused | Make sure the terminal shows "J.A.R.V.I.S. Online" |
 
 ## Example Commands
 

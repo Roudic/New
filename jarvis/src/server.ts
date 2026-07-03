@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config, assertConfig } from "./config.js";
@@ -7,6 +8,8 @@ import { JarvisAgent } from "./agent.js";
 import { toolDefinitions, workspaceExists } from "./tools/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const projectRoot = join(__dirname, "..");
+const webDist = join(projectRoot, "web", "dist");
 const sessions = new Map<string, JarvisAgent>();
 
 function getSession(id: string): JarvisAgent {
@@ -120,10 +123,20 @@ export function createApp() {
     res.json({ history: agent.getHistory() });
   });
 
-  const webDist = join(__dirname, "..", "web", "dist");
+  if (!existsSync(join(webDist, "index.html"))) {
+    console.warn(
+      "\n  WARNING: Web UI not built. Run: npm run build:web\n"
+    );
+  }
+
   app.use(express.static(webDist));
   app.get("*", (_req, res) => {
-    res.sendFile(join(webDist, "index.html"), (err) => {
+    const indexPath = join(webDist, "index.html");
+    if (!existsSync(indexPath)) {
+      res.status(200).send(fallbackHtml());
+      return;
+    }
+    res.sendFile(indexPath, (err) => {
       if (err) {
         res.status(200).send(fallbackHtml());
       }
@@ -143,16 +156,34 @@ function fallbackHtml(): string {
 
 export async function startServer() {
   const app = createApp();
-  app.listen(config.port, "0.0.0.0", () => {
+  const url = `http://localhost:${config.port}`;
+
+  const server = app.listen(config.port, "0.0.0.0", () => {
     console.log(`
-  ╔══════════════════════════════════════════╗
-  ║           J.A.R.V.I.S. Online            ║
-  ╠══════════════════════════════════════════╣
-  ║  Web UI:  http://localhost:${config.port}           ║
-  ║  API:     http://localhost:${config.port}/api/health ║
-  ║  Workspace: ${config.workspace.slice(0, 28).padEnd(28)} ║
-  ╚══════════════════════════════════════════╝
+  ╔══════════════════════════════════════════════════╗
+  ║              J.A.R.V.I.S. Online               ║
+  ╠══════════════════════════════════════════════════╣
+  ║  Open in browser:  ${url.padEnd(28)} ║
+  ║  API health:       ${`${url}/api/health`.padEnd(28)} ║
+  ║  Workspace:        ${config.workspace.slice(0, 28).padEnd(28)} ║
+  ╠══════════════════════════════════════════════════╣
+  ║  NOTE: JARVIS uses port ${String(config.port).padEnd(4)} (not 3000)           ║
+  ╚══════════════════════════════════════════════════╝
 `);
+  });
+
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`
+  ERROR: Port ${config.port} is already in use.
+
+  Try:
+    PORT=3002 npm run dev
+  Or kill the process using port ${config.port}.
+`);
+      process.exit(1);
+    }
+    throw err;
   });
 }
 
