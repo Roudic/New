@@ -43,9 +43,9 @@ export default function ChecklistsPage() {
   return (
     <AppShell>
       <PageHeader
-        eyebrow="Checklist Library"
-        title="Operational Checklists"
-        description="Built-in templates and custom checklists you can assign to your team."
+        eyebrow="Audit Library"
+        title="Kitchen Audit Checklists"
+        description="Built-in kitchen compliance templates and custom audits you can assign to your crew."
         action={
           isAdmin ? (
             <Link href="/checklists/new" className="btn-primary">

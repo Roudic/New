@@ -6,29 +6,33 @@ export interface DemoUser {
   name: string;
   role: DemoRole;
   locationName: string;
+  jobTitle?: string;
 }
 
 export const demoUsers: DemoUser[] = [
   {
     email: "admin@joltcheck.com",
     password: "admin123",
-    name: "Admin Manager",
+    name: "Maria Santos",
     role: "ADMIN",
-    locationName: "HQ Operations",
+    locationName: "Main Street Kitchen",
+    jobTitle: "Kitchen Manager",
   },
   {
     email: "alex@store.com",
     password: "employee123",
     name: "Alex Rivera",
     role: "EMPLOYEE",
-    locationName: "Main Street Location",
+    locationName: "Main Street Kitchen",
+    jobTitle: "Line Cook",
   },
   {
     email: "sam@store.com",
     password: "employee123",
     name: "Sam Chen",
     role: "EMPLOYEE",
-    locationName: "Main Street Location",
+    locationName: "Main Street Kitchen",
+    jobTitle: "Prep Cook",
   },
 ];
 

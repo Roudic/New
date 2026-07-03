@@ -47,6 +47,7 @@ export interface AppEmployee {
   email: string;
   name: string;
   locationName: string;
+  jobTitle?: string;
 }
 
 interface AppContextValue {
@@ -90,23 +91,46 @@ interface AppContextValue {
 
 function seedDemoAssignments(): Assignment[] {
   const now = new Date().toISOString();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
   return [
     {
       id: "demo-assign-1",
-      templateId: "store-opening",
+      templateId: "kitchen-opening",
+      templateName: "Kitchen Opening & Line Setup",
+      templateCategory: "opening",
       assignedToEmail: "alex@store.com",
       assignedToName: "Alex Rivera",
-      assignedByName: "Admin",
+      assignedToLocation: "Main Street Location",
+      assignedByName: "Admin Manager",
       status: "pending",
-      notes: "Complete before doors open.",
+      dueDate: tomorrow.toISOString(),
+      notes: "Complete before lunch service — 11 AM.",
       createdAt: now,
     },
     {
       id: "demo-assign-2",
-      templateId: "food-safety-temps",
+      templateId: "hot-line-temps",
+      templateName: "Hot Line Temperature Check",
+      templateCategory: "food_safety",
       assignedToEmail: "sam@store.com",
       assignedToName: "Sam Chen",
-      assignedByName: "Admin",
+      assignedToLocation: "Main Street Location",
+      assignedByName: "Admin Manager",
+      status: "pending",
+      dueDate: tomorrow.toISOString(),
+      notes: "Lunch shift line check.",
+      createdAt: now,
+    },
+    {
+      id: "demo-assign-3",
+      templateId: "manager-kitchen-audit",
+      templateName: "Manager Kitchen Walk-through",
+      templateCategory: "audit",
+      assignedToEmail: "alex@store.com",
+      assignedToName: "Alex Rivera",
+      assignedToLocation: "Main Street Location",
+      assignedByName: "Admin Manager",
       status: "pending",
       createdAt: now,
     },
@@ -360,11 +384,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
       if (!employee) return;
 
+      const template = resolveTemplate(input.templateId, customChecklists);
       const assignment: Assignment = {
         id: generateId(),
         templateId: input.templateId,
+        templateName: template?.name,
+        templateCategory: template?.category,
         assignedToEmail: employee.email,
         assignedToName: employee.name,
+        assignedToLocation: employee.locationName,
         assignedByName: settings.employeeName || "Admin",
         dueDate: input.dueDate,
         status: "pending",

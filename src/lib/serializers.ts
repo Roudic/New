@@ -90,6 +90,8 @@ export function serializeAssignment(
   return {
     id: assignment.id,
     templateId: assignment.templateId,
+    templateName: assignment.template.name,
+    templateCategory: assignment.template.category,
     template: serializeTemplate(assignment.template),
     assignedTo: assignment.assignedTo,
     assignedBy: assignment.assignedBy,

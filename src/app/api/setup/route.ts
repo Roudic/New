@@ -51,9 +51,9 @@ export async function POST(request: Request) {
   const admin = await prisma.user.create({
     data: {
       email: "admin@joltcheck.com",
-      name: "Admin Manager",
+      name: "Maria Santos",
       role: "ADMIN",
-      locationName: "HQ Operations",
+      locationName: "Main Street Kitchen",
       passwordHash: await hashPassword("admin123"),
     },
   });
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         email: "alex@store.com",
         name: "Alex Rivera",
         role: "EMPLOYEE",
-        locationName: "Main Street Location",
+        locationName: "Main Street Kitchen",
         passwordHash: await hashPassword("employee123"),
       },
     }),
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         email: "sam@store.com",
         name: "Sam Chen",
         role: "EMPLOYEE",
-        locationName: "Main Street Location",
+        locationName: "Main Street Kitchen",
         passwordHash: await hashPassword("employee123"),
       },
     }),
@@ -105,10 +105,13 @@ export async function POST(request: Request) {
   }
 
   const opening = await prisma.checklistTemplate.findFirst({
-    where: { name: "Store Opening" },
+    where: { name: "Kitchen Opening & Line Setup" },
   });
-  const closing = await prisma.checklistTemplate.findFirst({
-    where: { name: "Store Closing" },
+  const hotLine = await prisma.checklistTemplate.findFirst({
+    where: { name: "Hot Line Temperature Check" },
+  });
+  const managerAudit = await prisma.checklistTemplate.findFirst({
+    where: { name: "Manager Kitchen Walk-through" },
   });
 
   if (opening) {
@@ -118,19 +121,30 @@ export async function POST(request: Request) {
         assignedToId: employees[0].id,
         assignedById: admin.id,
         dueDate: new Date(),
-        notes: "Complete before doors open.",
+        notes: "Opening shift — complete before lunch service.",
       },
     });
   }
 
-  if (closing) {
+  if (hotLine) {
     await prisma.assignment.create({
       data: {
-        templateId: closing.id,
+        templateId: hotLine.id,
         assignedToId: employees[1].id,
         assignedById: admin.id,
         dueDate: new Date(),
-        notes: "End of shift closing checklist.",
+        notes: "Lunch line temperature check.",
+      },
+    });
+  }
+
+  if (managerAudit) {
+    await prisma.assignment.create({
+      data: {
+        templateId: managerAudit.id,
+        assignedToId: employees[0].id,
+        assignedById: admin.id,
+        notes: "Daily manager walk-through.",
       },
     });
   }

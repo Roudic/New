@@ -11,9 +11,9 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "JoltCheck — Operations Checklists",
+  title: "KitchenCheck — Kitchen Audit & Compliance",
   description:
-    "Digital checklists with login, admin assignments, and team progress tracking.",
+    "Kitchen audit checklists with crew assignments, temperature logs, and manager compliance tracking.",
   appleWebApp: {
     capable: true,
     title: "JoltCheck",

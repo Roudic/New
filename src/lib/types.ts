@@ -78,8 +78,11 @@ export type AssignmentStatus = "pending" | "in_progress" | "completed";
 export interface Assignment {
   id: string;
   templateId: string;
+  templateName?: string;
+  templateCategory?: string;
   assignedToEmail: string;
   assignedToName: string;
+  assignedToLocation?: string;
   assignedByName: string;
   dueDate?: string;
   status: AssignmentStatus;

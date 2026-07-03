@@ -5,10 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ClipboardList,
   LayoutDashboard,
+  ListChecks,
   LogOut,
   Plus,
   Settings,
-  UserCheck,
   Users,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
@@ -22,9 +22,9 @@ export function NavBar() {
   const navItems = isAdmin
     ? [
         { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/admin/assign", label: "Assign", icon: UserCheck },
-        { href: "/checklists", label: "Checklists", icon: ClipboardList },
-        { href: "/history", label: "History", icon: Users },
+        { href: "/admin/assignments", label: "Assignments", icon: ListChecks },
+        { href: "/admin/team", label: "Team", icon: Users },
+        { href: "/checklists", label: "Audits", icon: ClipboardList },
       ]
     : [
         { href: "/employee", label: "My Tasks", icon: LayoutDashboard },
@@ -47,10 +47,10 @@ export function NavBar() {
             </div>
             <div>
               <p className="text-sm font-bold tracking-tight text-slate-900">
-                JoltCheck
+                KitchenCheck
               </p>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                {isAdmin ? "Admin" : "Employee"}
+                {isAdmin ? "Manager" : "Crew"}
               </p>
             </div>
           </Link>

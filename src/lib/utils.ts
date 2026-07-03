@@ -55,12 +55,12 @@ export function isRunComplete(
 
 export function categoryLabel(category: string): string {
   const labels: Record<string, string> = {
-    opening: "Opening",
-    closing: "Closing",
+    opening: "Kitchen Opening",
+    closing: "Kitchen Closing",
     food_safety: "Food Safety",
-    cleaning: "Cleaning",
+    cleaning: "Sanitation",
     shift: "Shift Change",
-    audit: "Audit",
+    audit: "Kitchen Audit",
     custom: "Custom",
   };
   return labels[category] ?? category;

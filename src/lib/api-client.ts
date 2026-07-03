@@ -22,7 +22,10 @@ export interface CloudEmployee {
 interface ApiAssignment {
   id: string;
   templateId: string;
-  assignedTo: { id: string; name: string; email: string };
+  templateName?: string;
+  templateCategory?: string;
+  template?: { name: string; category: string };
+  assignedTo: { id: string; name: string; email: string; locationName: string };
   assignedBy: { id: string; name: string };
   dueDate?: string | null;
   status: string;
@@ -44,8 +47,11 @@ export function normalizeAssignment(raw: ApiAssignment): Assignment {
   return {
     id: raw.id,
     templateId: raw.templateId,
+    templateName: raw.templateName ?? raw.template?.name,
+    templateCategory: raw.templateCategory ?? raw.template?.category,
     assignedToEmail: raw.assignedTo.email,
     assignedToName: raw.assignedTo.name,
+    assignedToLocation: raw.assignedTo.locationName,
     assignedByName: raw.assignedBy.name,
     dueDate: raw.dueDate ?? undefined,
     status: raw.status as Assignment["status"],

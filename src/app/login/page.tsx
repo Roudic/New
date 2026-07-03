@@ -105,14 +105,14 @@ export default function LoginPage() {
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">
-                  JoltCheck
+                  KitchenCheck
                 </p>
                 <h1 className="text-2xl font-bold">Sign in</h1>
               </div>
             </div>
             <p className="mt-4 text-sm leading-relaxed text-white/85">
               {storageMode === "cloud"
-                ? "Connected to cloud database — team data syncs across devices."
+                ? "Kitchen audit platform — crew assignments sync across devices."
                 : "Offline demo mode — data saves on this device only."}
             </p>
           </div>
