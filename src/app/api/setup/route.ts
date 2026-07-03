@@ -1,33 +1,10 @@
-import { execFileSync } from "child_process";
-import path from "path";
 import { NextResponse } from "next/server";
+import { ensureDatabaseSchema } from "@/lib/db-schema";
 import { getDatabaseHint, prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
 import { checklistTemplates } from "@/lib/templates";
 
 export const dynamic = "force-dynamic";
-
-function ensureSchema() {
-  const prismaBin = path.join(process.cwd(), "node_modules", ".bin", "prisma");
-  try {
-    execFileSync(
-      prismaBin,
-      ["migrate", "deploy"],
-      {
-        env: process.env,
-        stdio: "pipe",
-      }
-    );
-  } catch (error) {
-    const stderr =
-      error && typeof error === "object" && "stderr" in error
-        ? String((error as { stderr: Buffer }).stderr)
-        : "";
-    const message =
-      error instanceof Error ? error.message : "Schema migration failed";
-    throw new Error(stderr || message);
-  }
-}
 
 async function countUsersSafely() {
   try {
@@ -35,7 +12,7 @@ async function countUsersSafely() {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message.includes("no such table")) {
-      ensureSchema();
+      await ensureDatabaseSchema();
       return await prisma.user.count();
     }
     throw error;
