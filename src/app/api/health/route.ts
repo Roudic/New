@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ensureDatabaseSchema } from "@/lib/db-schema";
 import { getDatabaseHint, prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,7 @@ export async function GET() {
   }
 
   try {
+    await ensureDatabaseSchema();
     const userCount = await prisma.user.count();
     return NextResponse.json({
       ok: true,
