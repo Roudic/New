@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -13,6 +13,9 @@
 
 # production
 /build
+/dist
+/public/pulse
+drive-thru-pulse/dist
 
 # misc
 .DS_Store

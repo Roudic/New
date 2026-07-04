@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/print-mobile-url.js && next dev -H 0.0.0.0",
-    "build": "prisma generate && next build",
+    "dev:pulse": "cd drive-thru-pulse && npm run dev",
+    "build": "prisma generate && npm run build:pulse && next build",
+    "build:pulse": "cd drive-thru-pulse && npm run build && rm -rf ../public/pulse && mkdir -p ../public/pulse && cp -r dist/* ../public/pulse/",
     "start": "next start -H 0.0.0.0",
     "lint": "next lint",
     "postinstall": "prisma generate",
