@@ -1,38 +1,67 @@
-import type { Session } from "../types";
+import type { AppState, Assignment, ChecklistRun } from "./types";
 
-const STORAGE_KEY = "dtp_sessions";
+const STORAGE_KEY = "jolt-checklist-app";
 
-export function loadSessions(): Session[] {
+export const defaultAppState: AppState = {
+  settings: {
+    employeeName: "",
+    locationName: "Main Street Location",
+  },
+  runs: [],
+  customChecklists: [],
+  assignments: [],
+};
+
+export function loadAppState(): AppState {
+  if (typeof window === "undefined") {
+    return defaultAppState;
+  }
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Session[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!raw) return defaultAppState;
+    const parsed = JSON.parse(raw) as Partial<AppState>;
+    return {
+      ...defaultAppState,
+      ...parsed,
+      customChecklists: parsed.customChecklists ?? [],
+      assignments: parsed.assignments ?? [],
+    };
   } catch {
-    return [];
+    return defaultAppState;
   }
 }
 
-export function saveSessions(sessions: Session[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+export function saveAppState(state: AppState): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-export function getActiveSession(sessions: Session[]): Session | null {
-  return sessions.find((s) => s.endedAt === null) ?? null;
+export function getActiveRuns(runs: ChecklistRun[]): ChecklistRun[] {
+  return runs
+    .filter((r) => r.status === "in_progress")
+    .sort(
+      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+    );
 }
 
-export function upsertSession(sessions: Session[], session: Session): Session[] {
-  const index = sessions.findIndex((s) => s.id === session.id);
-  if (index === -1) return [session, ...sessions];
-  const next = [...sessions];
-  next[index] = session;
-  return next;
+export function getCompletedRuns(runs: ChecklistRun[]): ChecklistRun[] {
+  return runs
+    .filter((r) => r.status === "completed")
+    .sort(
+      (a, b) =>
+        new Date(b.completedAt ?? b.startedAt).getTime() -
+        new Date(a.completedAt ?? a.startedAt).getTime()
+    );
 }
 
-export function deleteSession(sessions: Session[], id: string): Session[] {
-  return sessions.filter((s) => s.id !== id);
-}
-
-export function getSessionById(sessions: Session[], id: string): Session | null {
-  return sessions.find((s) => s.id === id) ?? null;
+export function getAssignmentsForUser(
+  assignments: Assignment[],
+  email: string
+): Assignment[] {
+  return assignments
+    .filter((a) => a.assignedToEmail === email.toLowerCase())
+    .sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 }

@@ -1,41 +1,50 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: [
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
   theme: {
     extend: {
       colors: {
-        background: "#0d0d0f",
-        surface: "#16161a",
-        "surface-elevated": "#1e1e24",
-        cfa: {
-          red: "#E51636",
-          "red-dark": "#b8112b",
-          "red-glow": "#ff2d4d",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        brand: {
+          50: "#eef4ff",
+          100: "#d9e6ff",
+          200: "#bcd4ff",
+          300: "#8fb8ff",
+          500: "#3b7cff",
+          600: "#1d5fe8",
+          700: "#164bc0",
+          800: "#153f9e",
+          900: "#17377d",
         },
-        pace: {
-          green: "#22c55e",
-          yellow: "#eab308",
-          red: "#ef4444",
+        surface: {
+          DEFAULT: "#ffffff",
+          muted: "#f4f7fb",
+          elevated: "#ffffff",
         },
       },
-      animation: {
-        "tap-flash": "tap-flash 150ms ease-out",
-        "tap-scale": "tap-scale 150ms ease-out",
+      boxShadow: {
+        card: "0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06)",
+        "card-hover":
+          "0 2px 4px rgba(15, 23, 42, 0.06), 0 16px 40px rgba(15, 23, 42, 0.08)",
+        glow: "0 0 0 1px rgba(29, 95, 232, 0.08), 0 12px 32px rgba(29, 95, 232, 0.12)",
       },
-      keyframes: {
-        "tap-flash": {
-          "0%": { backgroundColor: "#ff2d4d" },
-          "100%": { backgroundColor: "#E51636" },
-        },
-        "tap-scale": {
-          "0%": { transform: "scale(0.96)" },
-          "100%": { transform: "scale(1)" },
-        },
+      backgroundImage: {
+        "grid-pattern":
+          "linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px)",
+        "hero-gradient":
+          "radial-gradient(circle at top left, rgba(29, 95, 232, 0.12), transparent 42%), radial-gradient(circle at top right, rgba(20, 184, 166, 0.08), transparent 38%)",
+      },
+      backgroundSize: {
+        grid: "24px 24px",
       },
     },
   },
   plugins: [],
 };
-
 export default config;

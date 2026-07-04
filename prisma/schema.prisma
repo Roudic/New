@@ -1,0 +1,102 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("EMPLOYEE")
+  locationName String   @default("Main Street Location")
+  createdAt    DateTime @default(now())
+
+  assignmentsReceived Assignment[]      @relation("AssignedTo")
+  assignmentsCreated  Assignment[]      @relation("AssignedBy")
+  runs                ChecklistRun[]
+  templatesCreated    ChecklistTemplate[] @relation("CreatedBy")
+}
+
+model ChecklistTemplate {
+  id               String   @id @default(cuid())
+  name             String
+  description      String   @default("")
+  category         String
+  schedule         String
+  estimatedMinutes Int      @default(15)
+  isBuiltIn        Boolean  @default(false)
+  createdById      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  createdBy   User?           @relation("CreatedBy", fields: [createdById], references: [id])
+  items       ChecklistItem[]
+  assignments Assignment[]
+  runs        ChecklistRun[]
+}
+
+model ChecklistItem {
+  id           String  @id @default(cuid())
+  templateId   String
+  title        String
+  description  String?
+  type         String
+  required     Boolean @default(true)
+  minTemp      Float?
+  maxTemp      Float?
+  trainingNote String?
+  sortOrder    Int     @default(0)
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+model Assignment {
+  id           String   @id @default(cuid())
+  templateId   String
+  assignedToId String
+  assignedById String
+  dueDate      DateTime?
+  status       String   @default("PENDING")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  template   ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  assignedTo User              @relation("AssignedTo", fields: [assignedToId], references: [id])
+  assignedBy User              @relation("AssignedBy", fields: [assignedById], references: [id])
+  runs       ChecklistRun[]
+}
+
+model ChecklistRun {
+  id           String    @id @default(cuid())
+  templateId   String
+  userId       String
+  assignmentId String?
+  status       String    @default("IN_PROGRESS")
+  startedAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  template    ChecklistTemplate @relation(fields: [templateId], references: [id])
+  user        User              @relation(fields: [userId], references: [id])
+  assignment  Assignment?       @relation(fields: [assignmentId], references: [id])
+  completions TaskCompletion[]
+}
+
+model TaskCompletion {
+  id            String   @id @default(cuid())
+  runId         String
+  itemId        String
+  completedById String
+  value         String?
+  photoDataUrl  String?
+  notes         String?
+  completedAt   DateTime @default(now())
+
+  run ChecklistRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
