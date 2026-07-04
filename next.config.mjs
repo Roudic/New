@@ -12,6 +12,12 @@ const nextConfig = {
     "172.30.*",
     "172.31.*",
   ],
+  async rewrites() {
+    return [
+      { source: "/pulse", destination: "/pulse/index.html" },
+      { source: "/pulse/", destination: "/pulse/index.html" },
+    ];
+  },
 };
 
 export default nextConfig;

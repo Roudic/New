@@ -2,5 +2,8 @@
   "framework": "nextjs",
   "buildCommand": "prisma generate && npm run build:pulse && next build",
   "installCommand": "npm install && npm install --prefix drive-thru-pulse",
-  "redirects": [{ "source": "/pulse", "destination": "/pulse/", "permanent": false }]
+  "rewrites": [
+    { "source": "/pulse", "destination": "/pulse/index.html" },
+    { "source": "/pulse/", "destination": "/pulse/index.html" }
+  ]
 }
