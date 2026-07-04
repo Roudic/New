@@ -11,6 +11,16 @@ npm run dev
 
 Open http://localhost:5173 on an iPad or phone at the drive-thru window.
 
+## Deployed URL
+
+When deployed via the root Vercel project (JoltCheck), Pulse is served at **`/pulse/`** on the same domain:
+
+```
+https://your-app.vercel.app/pulse/
+```
+
+The root `npm run build` bundles Pulse into `public/pulse/` automatically.
+
 ## Build
 
 ```bash
