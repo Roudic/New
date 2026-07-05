@@ -190,8 +190,16 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button type="submit" className="btn-primary w-full" disabled={submitting}>
-              {submitting ? "Signing in..." : "Sign In"}
+            <button
+              type="submit"
+              className="btn-primary w-full"
+              disabled={submitting || storageMode === "loading"}
+            >
+              {storageMode === "loading"
+                ? "Connecting..."
+                : submitting
+                  ? "Signing in..."
+                  : "Sign In"}
             </button>
           </form>
 

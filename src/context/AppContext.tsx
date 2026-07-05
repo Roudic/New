@@ -277,13 +277,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getAllTemplatesList = useCallback(() => {
     if (storageMode === "cloud") return cloudTemplates;
+    if (storageMode === "loading") return [];
     return getAllTemplates(customChecklists);
   }, [storageMode, cloudTemplates, customChecklists]);
 
   const login = useCallback(
     async (email: string, password: string) => {
-      if (storageMode === "cloud") {
-        if (needsSeed) return false;
+      // The health check may still be in flight on slow connections —
+      // resolve the mode now rather than silently falling into demo login.
+      let mode = storageMode;
+      let seedPending = needsSeed;
+      if (mode === "loading") {
+        const health = await fetchHealth();
+        mode = health.ok ? "cloud" : "local";
+        seedPending = Boolean(health.ok && health.needsSeed);
+        setStorageMode(mode);
+        setNeedsSeed(seedPending);
+        setReady(true);
+      }
+
+      if (mode === "cloud") {
+        if (seedPending) return false;
         const result = await signIn("credentials", {
           email,
           password,
@@ -404,7 +418,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const employee = cloudEmployees.find(
           (e) => e.email === input.assignedToEmail
         );
-        if (!employee) return;
+        if (!employee) {
+          throw new Error("Select a crew member to assign this audit to.");
+        }
 
         await createCloudAssignment({
           templateId: input.templateId,
@@ -598,10 +614,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         jobTitle: employee.jobTitle ?? undefined,
       }));
     }
+    if (storageMode === "loading") return [];
     return getDemoEmployees();
   }, [storageMode, cloudEmployees]);
 
   const getTeamMembers = useCallback((): AppEmployee[] => {
+    if (storageMode === "loading") return [];
     if (storageMode === "cloud") {
       return cloudTeamMembers.map((member) => ({
         id: member.id,

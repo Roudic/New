@@ -86,11 +86,16 @@ export function normalizeAssignment(raw: ApiAssignment): Assignment {
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
   if (!res.ok) {
     throw new Error(
-      typeof data.error === "string" ? data.error : "Request failed"
+      data && typeof data.error === "string"
+        ? data.error
+        : `Request failed (${res.status})`
     );
+  }
+  if (data === null) {
+    throw new Error("The server returned an invalid response.");
   }
   return data as T;
 }
