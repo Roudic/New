@@ -30,26 +30,49 @@ export default function AssignChecklistForm() {
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Template and crew lists load asynchronously — keep the selected ids
+  // pointing at real entries once data arrives, or stale ids get submitted.
+  useEffect(() => {
+    if (templates.length > 0 && !templates.some((t) => t.id === templateId)) {
+      setTemplateId(templates[0].id);
+    }
+  }, [templates, templateId]);
 
   useEffect(() => {
-    if (preselectedEmail) {
+    if (employees.length === 0) return;
+    if (preselectedEmail && employees.some((e) => e.email === preselectedEmail)) {
       setAssignedToEmail(preselectedEmail);
+      return;
     }
-  }, [preselectedEmail]);
+    if (!employees.some((e) => e.email === assignedToEmail)) {
+      setAssignedToEmail(employees[0].email);
+    }
+  }, [employees, preselectedEmail, assignedToEmail]);
 
   const selectedTemplate = templates.find((t) => t.id === templateId);
   const selectedEmployee = employees.find((e) => e.email === assignedToEmail);
+  const listsReady = templates.length > 0 && employees.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setSubmitting(true);
-    await createAssignment({
-      templateId,
-      assignedToEmail,
-      dueDate: dueDate || undefined,
-      notes: notes || undefined,
-    });
-    router.push("/admin/assignments");
+    try {
+      await createAssignment({
+        templateId,
+        assignedToEmail,
+        dueDate: dueDate || undefined,
+        notes: notes || undefined,
+      });
+      router.push("/admin/assignments");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not create the assignment."
+      );
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -144,8 +167,22 @@ export default function AssignChecklistForm() {
           />
         </div>
 
-        <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? "Assigning..." : "Assign Audit to Crew Member"}
+        {error && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={submitting || !listsReady}
+        >
+          {!listsReady
+            ? "Loading..."
+            : submitting
+              ? "Assigning..."
+              : "Assign Audit to Crew Member"}
         </button>
       </form>
     </AppShell>

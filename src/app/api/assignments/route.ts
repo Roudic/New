@@ -42,6 +42,18 @@ export async function POST(request: Request) {
     );
   }
 
+  const [template, assignee] = await Promise.all([
+    prisma.checklistTemplate.findUnique({ where: { id: templateId } }),
+    prisma.user.findUnique({ where: { id: assignedToId } }),
+  ]);
+
+  if (!template || !assignee) {
+    return NextResponse.json(
+      { error: "That checklist or crew member no longer exists. Refresh and try again." },
+      { status: 400 }
+    );
+  }
+
   const assignment = await prisma.assignment.create({
     data: {
       templateId,

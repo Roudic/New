@@ -17,6 +17,30 @@ export interface CloudEmployee {
   name: string;
   email: string;
   locationName: string;
+  role?: string;
+  jobTitle?: string | null;
+}
+
+export interface TeamInviteRecord {
+  id: string;
+  email: string;
+  name: string;
+  jobTitle: string | null;
+  role: string;
+  locationName: string;
+  token: string;
+  inviteUrl: string;
+  invitedByName: string;
+  expiresAt: string;
+  acceptedAt?: string;
+  createdAt: string;
+  status: "pending" | "accepted" | "expired";
+}
+
+export interface CreateTeamMemberResult {
+  user: CloudEmployee;
+  tempPassword?: string;
+  message: string;
 }
 
 interface ApiAssignment {
@@ -62,11 +86,16 @@ export function normalizeAssignment(raw: ApiAssignment): Assignment {
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
   if (!res.ok) {
     throw new Error(
-      typeof data.error === "string" ? data.error : "Request failed"
+      data && typeof data.error === "string"
+        ? data.error
+        : `Request failed (${res.status})`
     );
+  }
+  if (data === null) {
+    throw new Error("The server returned an invalid response.");
   }
   return data as T;
 }
@@ -88,7 +117,111 @@ export async function fetchRuns(): Promise<ChecklistRun[]> {
 }
 
 export async function fetchEmployees(): Promise<CloudEmployee[]> {
+  const res = await fetch("/api/users?role=EMPLOYEE");
+  return parseJson(res);
+}
+
+export async function fetchTeamMembers(): Promise<CloudEmployee[]> {
   const res = await fetch("/api/users");
+  return parseJson(res);
+}
+
+export async function fetchInvites(): Promise<TeamInviteRecord[]> {
+  const res = await fetch("/api/invites");
+  return parseJson(res);
+}
+
+export async function createInvite(input: {
+  name: string;
+  email: string;
+  jobTitle?: string;
+  role?: "ADMIN" | "EMPLOYEE";
+  locationName?: string;
+}): Promise<TeamInviteRecord & { message?: string }> {
+  const res = await fetch("/api/invites", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return parseJson(res);
+}
+
+export async function cancelInvite(id: string): Promise<void> {
+  const res = await fetch(`/api/invites?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? "Could not cancel invite");
+  }
+}
+
+export async function createTeamMember(input: {
+  name: string;
+  email: string;
+  jobTitle?: string;
+  role?: "ADMIN" | "EMPLOYEE";
+  locationName?: string;
+  password?: string;
+}): Promise<CreateTeamMemberResult> {
+  const res = await fetch("/api/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return parseJson(res);
+}
+
+export async function updateTeamMember(
+  id: string,
+  input: {
+    name?: string;
+    jobTitle?: string | null;
+    role?: "ADMIN" | "EMPLOYEE";
+    locationName?: string;
+    isActive?: boolean;
+    password?: string;
+  }
+): Promise<CloudEmployee & { isActive?: boolean }> {
+  const res = await fetch(`/api/users/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return parseJson(res);
+}
+
+export async function deactivateTeamMember(id: string): Promise<void> {
+  const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? "Could not remove team member");
+  }
+}
+
+export async function fetchInviteDetails(token: string): Promise<{
+  name: string;
+  email: string;
+  jobTitle: string | null;
+  role: string;
+  locationName: string;
+  invitedByName: string;
+  expiresAt: string;
+}> {
+  const res = await fetch(`/api/invites/${token}`);
+  return parseJson(res);
+}
+
+export async function acceptInvite(
+  token: string,
+  password: string,
+  confirmPassword: string
+): Promise<{ ok: boolean; message: string; email: string }> {
+  const res = await fetch(`/api/invites/${token}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password, confirmPassword }),
+  });
   return parseJson(res);
 }
 

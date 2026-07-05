@@ -83,6 +83,30 @@ CREATE TABLE IF NOT EXISTS "TaskCompletion" (
 CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
 `;
 
+const MIGRATION_SQL = `
+CREATE TABLE IF NOT EXISTS "TeamInvite" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "email" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "jobTitle" TEXT,
+    "role" TEXT NOT NULL DEFAULT 'EMPLOYEE',
+    "locationName" TEXT NOT NULL DEFAULT 'Main Street Kitchen',
+    "token" TEXT NOT NULL,
+    "invitedById" TEXT NOT NULL,
+    "expiresAt" DATETIME NOT NULL,
+    "acceptedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "TeamInvite_invitedById_fkey" FOREIGN KEY ("invitedById") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "TeamInvite_token_key" ON "TeamInvite"("token");
+`;
+
+const USER_ALTER_STATEMENTS = [
+  `ALTER TABLE "User" ADD COLUMN "jobTitle" TEXT`,
+  `ALTER TABLE "User" ADD COLUMN "isActive" BOOLEAN NOT NULL DEFAULT true`,
+];
+
 function splitStatements(sql: string): string[] {
   return sql
     .split(";")
@@ -90,9 +114,23 @@ function splitStatements(sql: string): string[] {
     .filter(Boolean);
 }
 
+async function runOptionalStatements(
+  run: (sql: string) => Promise<unknown>,
+  statements: string[]
+) {
+  for (const statement of statements) {
+    try {
+      await run(statement);
+    } catch {
+      // Column or object may already exist on upgraded databases.
+    }
+  }
+}
+
 export async function ensureDatabaseSchema(): Promise<void> {
   const url = process.env.DATABASE_URL ?? "";
   const statements = splitStatements(INIT_SQL);
+  const migrations = splitStatements(MIGRATION_SQL);
 
   if (url.startsWith("libsql:")) {
     const client = createClient({
@@ -103,10 +141,18 @@ export async function ensureDatabaseSchema(): Promise<void> {
     for (const statement of statements) {
       await client.execute(statement);
     }
+    await runOptionalStatements((sql) => client.execute(sql), USER_ALTER_STATEMENTS);
+    for (const statement of migrations) {
+      await client.execute(statement);
+    }
     return;
   }
 
   for (const statement of statements) {
+    await prisma.$executeRawUnsafe(statement);
+  }
+  await runOptionalStatements((sql) => prisma.$executeRawUnsafe(sql), USER_ALTER_STATEMENTS);
+  for (const statement of migrations) {
     await prisma.$executeRawUnsafe(statement);
   }
 }

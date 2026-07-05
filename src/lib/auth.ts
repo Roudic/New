@@ -34,7 +34,7 @@ export const authOptions: NextAuthOptions = {
             where: { email: credentials.email.toLowerCase().trim() },
           });
 
-          if (!user) return null;
+          if (!user || !user.isActive) return null;
 
           const valid = await verifyPassword(
             credentials.password,
