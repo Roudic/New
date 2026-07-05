@@ -14,13 +14,32 @@ model User {
   passwordHash String
   name         String
   role         String   @default("EMPLOYEE")
-  locationName String   @default("Main Street Location")
+  jobTitle     String?
+  locationName String   @default("Main Street Kitchen")
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
   assignmentsReceived Assignment[]      @relation("AssignedTo")
   assignmentsCreated  Assignment[]      @relation("AssignedBy")
   runs                ChecklistRun[]
   templatesCreated    ChecklistTemplate[] @relation("CreatedBy")
+  invitesSent         TeamInvite[]        @relation("InvitedBy")
+}
+
+model TeamInvite {
+  id           String    @id @default(cuid())
+  email        String
+  name         String
+  jobTitle     String?
+  role         String    @default("EMPLOYEE")
+  locationName String    @default("Main Street Kitchen")
+  token        String    @unique
+  invitedById  String
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id])
 }
 
 model ChecklistTemplate {

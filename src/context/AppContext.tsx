@@ -11,19 +11,26 @@ import {
 } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import {
+  cancelInvite as cancelCloudInvite,
   createCloudAssignment,
   createCloudChecklist,
+  createInvite as createCloudInvite,
+  createTeamMember as createCloudTeamMember,
+  deactivateTeamMember as deactivateCloudTeamMember,
   deleteCloudChecklist,
   fetchAssignments,
   fetchEmployees,
   fetchHealth,
+  fetchInvites,
   fetchRuns,
+  fetchTeamMembers,
   fetchTemplates,
   startCloudRun,
   updateCloudChecklist,
   type CloudEmployee,
+  type TeamInviteRecord,
 } from "@/lib/api-client";
-import { findDemoUser, getDemoEmployees } from "@/lib/demo-users";
+import { findDemoUser, getDemoEmployees, demoUsers } from "@/lib/demo-users";
 import { getAllTemplates, resolveTemplate } from "@/lib/checklists";
 import {
   defaultAppState,
@@ -48,6 +55,7 @@ export interface AppEmployee {
   name: string;
   locationName: string;
   jobTitle?: string;
+  role?: string;
 }
 
 interface AppContextValue {
@@ -85,6 +93,25 @@ interface AppContextValue {
     dueDate?: string;
     notes?: string;
   }) => Promise<void>;
+  getTeamMembers: () => AppEmployee[];
+  pendingInvites: TeamInviteRecord[];
+  inviteTeamMember: (input: {
+    name: string;
+    email: string;
+    jobTitle?: string;
+    role?: "ADMIN" | "EMPLOYEE";
+    locationName?: string;
+  }) => Promise<TeamInviteRecord & { message?: string }>;
+  addTeamMember: (input: {
+    name: string;
+    email: string;
+    jobTitle?: string;
+    role?: "ADMIN" | "EMPLOYEE";
+    locationName?: string;
+    password?: string;
+  }) => Promise<{ tempPassword?: string; message: string }>;
+  removeTeamMember: (id: string) => Promise<void>;
+  cancelInvite: (id: string) => Promise<void>;
   resetAllData: () => void;
   getEmployees: () => AppEmployee[];
 }
@@ -152,6 +179,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [cloudEmployees, setCloudEmployees] = useState<CloudEmployee[]>([]);
+  const [cloudTeamMembers, setCloudTeamMembers] = useState<CloudEmployee[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<TeamInviteRecord[]>([]);
 
   useEffect(() => {
     fetchHealth().then((health) => {
@@ -219,8 +248,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setRuns(nextRuns);
 
     if (session.user.role === "ADMIN") {
-      const employees = await fetchEmployees();
+      const [employees, teamMembers, invites] = await Promise.all([
+        fetchEmployees(),
+        fetchTeamMembers(),
+        fetchInvites(),
+      ]);
       setCloudEmployees(employees);
+      setCloudTeamMembers(teamMembers);
+      setPendingInvites(invites);
     }
   }, [storageMode, session]);
 
@@ -278,6 +313,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setAssignments([]);
       setRuns([]);
       setCloudEmployees([]);
+      setCloudTeamMembers([]);
+      setPendingInvites([]);
       return;
     }
 
@@ -552,9 +589,92 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const getEmployees = useCallback((): AppEmployee[] => {
-    if (storageMode === "cloud") return cloudEmployees;
+    if (storageMode === "cloud") {
+      return cloudEmployees.map((employee) => ({
+        id: employee.id,
+        email: employee.email,
+        name: employee.name,
+        locationName: employee.locationName,
+        jobTitle: employee.jobTitle ?? undefined,
+      }));
+    }
     return getDemoEmployees();
   }, [storageMode, cloudEmployees]);
+
+  const getTeamMembers = useCallback((): AppEmployee[] => {
+    if (storageMode === "cloud") {
+      return cloudTeamMembers.map((member) => ({
+        id: member.id,
+        email: member.email,
+        name: member.name,
+        locationName: member.locationName,
+        jobTitle: member.jobTitle ?? undefined,
+        role: member.role,
+      }));
+    }
+    return demoUsers.map((u) => ({
+      email: u.email,
+      name: u.name,
+      locationName: u.locationName,
+      jobTitle: u.jobTitle,
+      role: u.role,
+    }));
+  }, [storageMode, cloudTeamMembers]);
+
+  const inviteTeamMember = useCallback(
+    async (input: {
+      name: string;
+      email: string;
+      jobTitle?: string;
+      role?: "ADMIN" | "EMPLOYEE";
+      locationName?: string;
+    }) => {
+      if (storageMode !== "cloud") {
+        throw new Error("Team invites require cloud mode.");
+      }
+      const invite = await createCloudInvite(input);
+      await refreshData();
+      return invite;
+    },
+    [storageMode, refreshData]
+  );
+
+  const addTeamMember = useCallback(
+    async (input: {
+      name: string;
+      email: string;
+      jobTitle?: string;
+      role?: "ADMIN" | "EMPLOYEE";
+      locationName?: string;
+      password?: string;
+    }) => {
+      if (storageMode !== "cloud") {
+        throw new Error("Adding team members requires cloud mode.");
+      }
+      const result = await createCloudTeamMember(input);
+      await refreshData();
+      return { tempPassword: result.tempPassword, message: result.message };
+    },
+    [storageMode, refreshData]
+  );
+
+  const removeTeamMember = useCallback(
+    async (id: string) => {
+      if (storageMode !== "cloud") return;
+      await deactivateCloudTeamMember(id);
+      await refreshData();
+    },
+    [storageMode, refreshData]
+  );
+
+  const cancelInviteFn = useCallback(
+    async (id: string) => {
+      if (storageMode !== "cloud") return;
+      await cancelCloudInvite(id);
+      await refreshData();
+    },
+    [storageMode, refreshData]
+  );
 
   const updateSettings = useCallback((partial: Partial<AppSettings>) => {
     setSettings((prev) => ({ ...prev, ...partial }));
@@ -588,6 +708,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateChecklist: updateChecklistFn,
       deleteChecklist: deleteChecklistFn,
       createAssignment: createAssignmentFn,
+      getTeamMembers,
+      pendingInvites,
+      inviteTeamMember,
+      addTeamMember,
+      removeTeamMember,
+      cancelInvite: cancelInviteFn,
       resetAllData,
       getEmployees,
     }),
@@ -616,6 +742,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateChecklistFn,
       deleteChecklistFn,
       createAssignmentFn,
+      getTeamMembers,
+      pendingInvites,
+      inviteTeamMember,
+      addTeamMember,
+      removeTeamMember,
+      cancelInviteFn,
       resetAllData,
       getEmployees,
     ]
