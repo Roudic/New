@@ -71,6 +71,23 @@ Use the demo accounts above. Data syncs across all devices.
 
 If no database is configured, the login page shows **Offline demo mode**. Data stays in the browser on that device only.
 
+## Journal & Notebooks (with AI)
+
+Also in this app: a personal **journal / notebook** at [`/journal`](http://localhost:3000/journal).
+
+- **Notebooks** to organize entries, with search, pinning, and tags
+- **Live autosave** — entries save as you type (cloud sync when logged in, localStorage in demo mode)
+- **Responsive** — three-pane on desktop, swipeable panes on mobile
+- **AI Dashboard** at `/journal/dashboard` powered by Claude:
+  - Summarize the last 7/30/90 days of writing
+  - Reflect on mood and recurring patterns
+  - Auto-organize: tag every entry by topic, detect mood, add one-line summaries
+  - Ask your journal anything ("when did I last mention the gym?")
+
+AI features require the cloud database plus `ANTHROPIC_API_KEY` in your environment
+(get one at [console.anthropic.com](https://console.anthropic.com)). Stats, streaks,
+and the journal itself work without it.
+
 ## Features
 
 - Admin dashboard with team progress

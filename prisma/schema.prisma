@@ -24,6 +24,8 @@ model User {
   runs                ChecklistRun[]
   templatesCreated    ChecklistTemplate[] @relation("CreatedBy")
   invitesSent         TeamInvite[]        @relation("InvitedBy")
+  notebooks           Notebook[]
+  journalEntries      JournalEntry[]
 }
 
 model TeamInvite {
@@ -105,6 +107,39 @@ model ChecklistRun {
   user        User              @relation(fields: [userId], references: [id])
   assignment  Assignment?       @relation(fields: [assignmentId], references: [id])
   completions TaskCompletion[]
+}
+
+model Notebook {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("blue")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries JournalEntry[]
+}
+
+model JournalEntry {
+  id         String   @id @default(cuid())
+  notebookId String
+  userId     String
+  title      String   @default("")
+  content    String   @default("")
+  tags       String   @default("[]")
+  mood       String?
+  aiSummary  String?
+  pinned     Boolean  @default(false)
+  entryDate  DateTime @default(now())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  notebook Notebook @relation(fields: [notebookId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@index([notebookId])
 }
 
 model TaskCompletion {
