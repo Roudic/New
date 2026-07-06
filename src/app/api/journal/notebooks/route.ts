@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { ensureJournalTables } from "@/lib/journal-db";
 import { serializeNotebook } from "@/lib/journal-serializers";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  await ensureJournalTables();
 
   const notebooks = await prisma.notebook.findMany({
     where: { userId: auth.user.id },
@@ -21,6 +23,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  await ensureJournalTables();
 
   const body = (await request.json()) as { name?: string; color?: string };
   if (!body.name?.trim()) {

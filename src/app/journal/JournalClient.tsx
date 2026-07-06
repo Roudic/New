@@ -123,7 +123,20 @@ export function JournalClient() {
   const [mobilePane, setMobilePane] = useState<"list" | "editor">("list");
   const [addingNotebook, setAddingNotebook] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const runAction = async (fn: () => Promise<void>) => {
+    setActionError(null);
+    try {
+      await fn();
+    } catch (error) {
+      console.error(error);
+      setActionError(
+        error instanceof Error ? error.message : "Something went wrong — try again."
+      );
+    }
+  };
 
   const visibleEntries = useMemo(() => {
     const inNotebook = activeNotebookId
@@ -173,37 +186,40 @@ export function JournalClient() {
     );
   }
 
-  const handleNewEntry = async () => {
-    let notebookId = activeNotebookId ?? notebooks[0]?.id;
-    if (!notebookId) {
-      const nb = await createNotebook("My Journal", "blue");
+  const handleNewEntry = () =>
+    runAction(async () => {
+      let notebookId = activeNotebookId ?? notebooks[0]?.id;
+      if (!notebookId) {
+        const nb = await createNotebook("My Journal", "blue");
+        setActiveNotebookId(nb.id);
+        notebookId = nb.id;
+      }
+      const entry = await createEntry(notebookId);
+      setActiveEntryId(entry.id);
+      setMobilePane("editor");
+    });
+
+  const handleAddNotebook = () =>
+    runAction(async () => {
+      const name = newNotebookName.trim();
+      if (!name) return;
+      const color =
+        NOTEBOOK_COLORS[notebooks.length % NOTEBOOK_COLORS.length];
+      const nb = await createNotebook(name, color);
       setActiveNotebookId(nb.id);
-      notebookId = nb.id;
-    }
-    const entry = await createEntry(notebookId);
-    setActiveEntryId(entry.id);
-    setMobilePane("editor");
-  };
+      setNewNotebookName("");
+      setAddingNotebook(false);
+    });
 
-  const handleAddNotebook = async () => {
-    const name = newNotebookName.trim();
-    if (!name) return;
-    const color =
-      NOTEBOOK_COLORS[notebooks.length % NOTEBOOK_COLORS.length];
-    const nb = await createNotebook(name, color);
-    setActiveNotebookId(nb.id);
-    setNewNotebookName("");
-    setAddingNotebook(false);
-  };
-
-  const handleDeleteEntry = async (entry: JournalEntry) => {
-    if (!window.confirm("Delete this entry? This can't be undone.")) return;
-    await deleteEntry(entry.id);
-    if (activeEntryId === entry.id) {
-      setActiveEntryId(null);
-      setMobilePane("list");
-    }
-  };
+  const handleDeleteEntry = (entry: JournalEntry) =>
+    runAction(async () => {
+      if (!window.confirm("Delete this entry? This can't be undone.")) return;
+      await deleteEntry(entry.id);
+      if (activeEntryId === entry.id) {
+        setActiveEntryId(null);
+        setMobilePane("list");
+      }
+    });
 
   const notebookOf = (id: string) => notebooks.find((n) => n.id === id);
 
@@ -231,6 +247,12 @@ export function JournalClient() {
       <div className="mt-3">
         <SaveIndicator saveState={saveState} lastSavedAt={lastSavedAt} isCloud={isCloud} />
       </div>
+
+      {actionError && (
+        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800">
+          {actionError}
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button

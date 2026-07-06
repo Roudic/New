@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { ensureJournalTables } from "@/lib/journal-db";
 import { serializeEntry } from "@/lib/journal-serializers";
 import type { JournalEntryDraft } from "@/lib/journal-types";
 
@@ -12,6 +13,7 @@ export async function PATCH(
 ) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  await ensureJournalTables();
 
   const existing = await prisma.journalEntry.findFirst({
     where: { id: params.id, userId: auth.user.id },
@@ -55,6 +57,7 @@ export async function DELETE(
 ) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  await ensureJournalTables();
 
   const existing = await prisma.journalEntry.findFirst({
     where: { id: params.id, userId: auth.user.id },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { ensureJournalTables } from "@/lib/journal-db";
 import { serializeEntry } from "@/lib/journal-serializers";
 import type { JournalEntryDraft } from "@/lib/journal-types";
 
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  await ensureJournalTables();
 
   const { searchParams } = new URL(request.url);
   const notebookId = searchParams.get("notebookId");
@@ -28,6 +30,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  await ensureJournalTables();
 
   const body = (await request.json()) as JournalEntryDraft;
   if (!body.notebookId) {
