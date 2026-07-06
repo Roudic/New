@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { requireUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
+import { ensureJournalTables } from "@/lib/journal-db";
 import { serializeEntry } from "@/lib/journal-serializers";
 import type { AiAction } from "@/lib/journal-types";
 
@@ -55,6 +56,7 @@ function formatEntries(
 export async function POST(request: Request) {
   const auth = await requireUser();
   if ("error" in auth) return auth.error;
+  await ensureJournalTables();
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
