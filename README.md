@@ -6,6 +6,10 @@ Operations checklist app for teams — login, admin assignments, checklist build
 
 The app **automatically uses a cloud database** when `DATABASE_URL` is configured (Turso on Vercel, SQLite locally). Without a database, it falls back to **localStorage demo mode** on that device.
 
+## JARVIS AI Assistant
+
+A JARVIS-like AI that controls your computer lives in [`jarvis/`](jarvis/README.md). See that README for setup and usage.
+
 ## Demo Accounts
 
 | Role | Email | Password |
