@@ -11,6 +11,12 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        cfa: {
+          DEFAULT: "#E51636",
+          dark: "#C41230",
+          ink: "#1B1B1B",
+          cream: "#FFF7F2",
+        },
         brand: {
           50: "#eef4ff",
           100: "#d9e6ff",

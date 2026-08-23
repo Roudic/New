@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
+  Gauge,
   PlayCircle,
   Users,
 } from "lucide-react";
@@ -63,6 +64,24 @@ export default function AdminDashboardPage() {
           </div>
         }
       />
+
+      <Link
+        href="/scorecard"
+        className="mb-8 flex items-center justify-between gap-4 rounded-2xl bg-cfa px-5 py-4 text-white shadow-card"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
+            <Gauge className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-bold">Chick-fil-A Hueytown Scorecard</p>
+            <p className="text-xs text-white/80">
+              Sales, labor, OSAT, drive-thru SOS, and CSV/PDF import
+            </p>
+          </div>
+        </div>
+        <span className="text-sm font-semibold">Open hub →</span>
+      </Link>
 
       <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Pending" value={stats.pending} icon={AlertTriangle} accent="amber" />

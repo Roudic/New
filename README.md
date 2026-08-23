@@ -88,6 +88,16 @@ AI features require the cloud database plus `ANTHROPIC_API_KEY` in your environm
 (get one at [console.anthropic.com](https://console.anthropic.com)). Stats, streaks,
 and the journal itself work without it.
 
+## Chick-fil-A Hueytown Scorecard
+
+Operator scorecard at [`/scorecard`](http://localhost:3000/scorecard), seeded from the Hueytown workbook (May–June 2026).
+
+- **Hub** — MTD KPI tiles (sales, labor %, OSAT, food cost, net profit, transactions)
+- **Daily / Drive-Thru / Monthly / Quarterly / YoY / Goals** — branching pages from the same data
+- **Upload** — CSV or the workbook PDF. The parser maps Daily Data columns, monthly P&L overlays, and the Goals tab. Excel percent bugs (`8500%` OSAT → `85`) and glued PDF cells (`$7,99419.90%`) are normalized.
+
+Templates live in [`public/scorecard/`](./public/scorecard/). `npm run test:scorecard` checks the PDF/CSV parser against the Hueytown workbook.
+
 ## Features
 
 - Admin dashboard with team progress
@@ -95,3 +105,4 @@ and the journal itself work without it.
 - Custom checklist builder
 - 6 built-in templates (opening, closing, food safety, etc.)
 - Task types: checkbox, yes/no, temperature, text, photo, number
+- Hueytown scorecard hub with CSV/PDF import
