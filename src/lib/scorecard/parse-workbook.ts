@@ -1,3 +1,7 @@
+import { combineParseResults } from "./merge";
+import { parseCemsText } from "./parse-cems";
+import { parseIntervalText } from "./parse-interval";
+import { parseSosText } from "./parse-sos";
 import {
   DEFAULT_GOALS_2025,
   DEFAULT_GOALS_2026,
@@ -167,7 +171,10 @@ function parseDailyBlocks(lines: string[], warnings: ParseWarning[]): DailyRow[]
     /datedayopen\/closedsalesly/i.test(line.replace(/\s+/g, ""))
   );
   if (start < 0) {
-    warnings.push({ message: "Could not find the Daily Data header in this file." });
+    const blob = lines.join(" ");
+    if (/daily\s*data|sales\s*l[y:]|sales\s*actual/i.test(blob) && /open\/closed/i.test(blob)) {
+      warnings.push({ message: "Could not find the Daily Data header in this file." });
+    }
     return [];
   }
 
@@ -292,17 +299,47 @@ export function parseWorkbookText(text: string): ParseResult {
   const lines = normalized.split("\n").map((line) => line.trim()).filter(Boolean);
   const location = /CHICK-FIL-A\s+HUEYTOWN/i.test(text) ? "Chick-fil-A Hueytown" : undefined;
 
-  const days = parseDailyBlocks(lines, warnings);
-  if (days.length === 0) {
-    warnings.push({ message: "No daily rows were detected. Try a CSV export of Daily Data." });
-  }
+  const days = parseDailyBlocks(lines, warnings).map((row) => ({
+    ...row,
+    origin: row.origin ?? ("daily" as const),
+  }));
+  const monthly = parseMonthly(normalized);
+  const goals = parseGoals(normalized, warnings);
+  const kinds = [
+    ...(days.length ? (["daily"] as const) : []),
+    ...(monthly.length ? (["monthly"] as const) : []),
+    ...(goals.length ? (["goals"] as const) : []),
+  ];
 
-  return {
+  const workbook: ParseResult = {
     location,
     days,
-    monthly: parseMonthly(normalized),
-    goals: parseGoals(normalized, warnings),
+    monthly,
+    goals,
+    intervals: [],
     warnings,
+    kinds: [...kinds],
     source: "pdf",
   };
+
+  const combined = combineParseResults("pdf", [
+    workbook,
+    parseIntervalText(normalized, "pdf"),
+    parseCemsText(normalized, "pdf"),
+    parseSosText(normalized, "pdf"),
+  ]);
+  combined.location = location ?? combined.location;
+
+  if (
+    combined.days.length === 0 &&
+    combined.monthly.length === 0 &&
+    combined.goals.length === 0 &&
+    combined.intervals.length === 0
+  ) {
+    combined.warnings.push({
+      message: "No scorecard rows were detected. Try a Daily Data, 15-minute, CEMS, or SOS file.",
+    });
+  }
+
+  return combined;
 }

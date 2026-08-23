@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import pdf from "pdf-parse";
-import { parseCsvText } from "@/lib/scorecard/parse-csv";
-import { parseWorkbookText } from "@/lib/scorecard/parse-workbook";
-import type { ParseResult } from "@/lib/scorecard/types";
+import { parseScorecardText } from "@/lib/scorecard/parse";
+import { hasParseableContent, type ParseResult } from "@/lib/scorecard/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,7 +10,7 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Choose a CSV or PDF file to upload." }, { status: 400 });
+    return NextResponse.json({ error: "Choose a CSV, PDF, or text file to upload." }, { status: 400 });
   }
 
   const filename = file.name || "upload";
@@ -22,16 +21,12 @@ export async function POST(req: Request) {
     let parsed: ParseResult;
     if (lower.endsWith(".pdf") || file.type === "application/pdf") {
       const extracted = await pdf(buffer);
-      parsed = parseWorkbookText(extracted.text);
+      parsed = parseScorecardText(extracted.text, filename);
     } else {
-      parsed = parseCsvText(buffer.toString("utf8"));
+      parsed = parseScorecardText(buffer.toString("utf8"), filename);
     }
 
-    if (
-      parsed.days.length === 0 &&
-      parsed.monthly.length === 0 &&
-      parsed.goals.length === 0
-    ) {
+    if (!hasParseableContent(parsed)) {
       return NextResponse.json(
         {
           error: "No scorecard rows were found in that file.",
@@ -48,7 +43,7 @@ export async function POST(req: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Could not read that file. Try a Daily Data CSV export.",
+            : "Could not read that file. Try a Daily Data, 15-minute, CEMS, or SOS export.",
       },
       { status: 400 }
     );

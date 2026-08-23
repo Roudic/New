@@ -4,13 +4,16 @@ import { useRef, useState } from "react";
 import { FileSpreadsheet, FileText, Upload } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useScorecard } from "@/hooks/useScorecard";
+import { CEMS_CSV_TEMPLATE } from "@/lib/scorecard/parse-cems";
 import {
   DAILY_CSV_TEMPLATE,
   GOALS_CSV_TEMPLATE,
   MONTHLY_CSV_TEMPLATE,
-  parseCsvText,
 } from "@/lib/scorecard/parse-csv";
-import type { ParseResult } from "@/lib/scorecard/types";
+import { INTERVAL_CSV_TEMPLATE } from "@/lib/scorecard/parse-interval";
+import { parseScorecardText } from "@/lib/scorecard/parse";
+import { formatScore, formatSos } from "@/lib/scorecard/format";
+import { hasParseableContent, type ParseResult } from "@/lib/scorecard/types";
 
 export default function UploadScorecardPage() {
   const { applyParse, resetToSeed, state, saving } = useScorecard();
@@ -28,10 +31,12 @@ export default function UploadScorecardPage() {
     setDone(null);
     setPreview(null);
     try {
-      if (file.name.toLowerCase().endsWith(".csv") || file.type === "text/csv") {
-        const parsed = parseCsvText(await file.text());
-        if (!parsed.days.length && !parsed.monthly.length && !parsed.goals.length) {
-          throw new Error(parsed.warnings[0]?.message ?? "No scorecard rows in that CSV.");
+      const lower = file.name.toLowerCase();
+      const isPdf = lower.endsWith(".pdf") || file.type === "application/pdf";
+      if (!isPdf) {
+        const parsed = parseScorecardText(await file.text(), file.name);
+        if (!hasParseableContent(parsed)) {
+          throw new Error(parsed.warnings[0]?.message ?? "No scorecard rows in that file.");
         }
         setPreview({ parsed, filename: file.name });
         return;
@@ -56,8 +61,11 @@ export default function UploadScorecardPage() {
     setBusy(true);
     try {
       await applyParse(preview.parsed, preview.filename, mode);
+      const { parsed } = preview;
+      const osatDays = parsed.days.filter((d) => d.osat != null).length;
+      const sosDays = parsed.days.filter((d) => d.dtSosTotalSec != null).length;
       setDone(
-        `Imported ${preview.parsed.days.length} daily rows, ${preview.parsed.monthly.length} monthly overlays, ${preview.parsed.goals.length} goal years from ${preview.filename}.`
+        `Imported ${parsed.days.length} daily rows, ${parsed.intervals.length} intervals, ${osatDays} CEMS/OSAT days, ${sosDays} SOS days, ${parsed.monthly.length} monthly overlays, ${parsed.goals.length} goal years from ${preview.filename}.`
       );
       setPreview(null);
     } catch (err) {
@@ -67,12 +75,15 @@ export default function UploadScorecardPage() {
     }
   };
 
+  const osatDays = preview?.parsed.days.filter((d) => d.osat != null).length ?? 0;
+  const sosDays = preview?.parsed.days.filter((d) => d.dtSosTotalSec != null).length ?? 0;
+
   return (
     <>
       <PageHeader
         eyebrow="Import"
         title="Upload CSV or PDF"
-        description="Drop the Chick-fil-A Hueytown workbook PDF or a Daily Data CSV. The parser reads sales, labor, OSAT, drive-thru times, monthly P&L, and the Goals tab — including Excel percent bugs like 8500% → 85 OSAT."
+        description="Drop the Hueytown workbook, a 15-minute report, a CEMS guest-experience file, or any SOS export. The parser reads sales, labor, OSAT attributes, drive-thru times, and interval boards — including Excel percent bugs like 8500% → 85 OSAT and 7:25 / 0:07:25 / decimal minutes."
       />
 
       <div
@@ -92,9 +103,9 @@ export default function UploadScorecardPage() {
         }`}
       >
         <Upload className="h-10 w-10 text-cfa" />
-        <p className="mt-3 font-semibold text-slate-900">Drop a .csv or .pdf here</p>
+        <p className="mt-3 font-semibold text-slate-900">Drop a .csv, .pdf, or .txt here</p>
         <p className="mt-1 text-sm text-slate-500">
-          Workbook PDFs and Daily Data / monthly / goals CSV exports are supported.
+          Workbook PDFs, 15-minute, CEMS, Daily Data, monthly, goals, and standalone SOS files.
         </p>
         <button
           type="button"
@@ -107,7 +118,7 @@ export default function UploadScorecardPage() {
         <input
           ref={inputRef}
           type="file"
-          accept=".csv,.pdf,text/csv,application/pdf"
+          accept=".csv,.pdf,.txt,text/csv,text/plain,application/pdf"
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -153,8 +164,10 @@ export default function UploadScorecardPage() {
         <section className="glass-panel mb-6 p-5">
           <h2 className="section-title">Preview · {preview.filename}</h2>
           <p className="mt-2 text-sm text-slate-600">
-            {preview.parsed.days.length} daily rows · {preview.parsed.monthly.length} monthly
-            overlays · {preview.parsed.goals.length} goal years
+            {preview.parsed.days.length} daily rows · {preview.parsed.intervals.length} intervals ·{" "}
+            {osatDays} CEMS/OSAT · {sosDays} SOS · {preview.parsed.monthly.length} monthly ·{" "}
+            {preview.parsed.goals.length} goal years
+            {preview.parsed.kinds.length ? ` · ${preview.parsed.kinds.join(", ")}` : ""}
             {preview.parsed.location ? ` · ${preview.parsed.location}` : ""}
           </p>
           {preview.parsed.warnings.length > 0 && (
@@ -164,33 +177,39 @@ export default function UploadScorecardPage() {
               ))}
             </ul>
           )}
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-[520px] w-full text-left text-sm">
-              <thead className="text-[11px] font-bold uppercase text-slate-500">
-                <tr>
-                  <th className="py-2">Date</th>
-                  <th>Sales</th>
-                  <th>Labor</th>
-                  <th>OSAT</th>
-                  <th>SOS</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {preview.parsed.days
-                  .filter((d) => d.kind === "day" && (d.salesActual || d.laborActual))
-                  .slice(0, 8)
-                  .map((row) => (
-                    <tr key={`${row.date}-${row.kind}`}>
-                      <td className="py-2">{row.date}</td>
-                      <td>{row.salesActual?.toLocaleString() ?? "—"}</td>
-                      <td>{row.laborActual?.toLocaleString() ?? "—"}</td>
-                      <td>{row.osat ?? "—"}</td>
-                      <td>{row.dtSosTotalSec ?? "—"}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+          {preview.parsed.days.length > 0 && (
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-[520px] w-full text-left text-sm">
+                <thead className="text-[11px] font-bold uppercase text-slate-500">
+                  <tr>
+                    <th className="py-2">Date</th>
+                    <th>Sales</th>
+                    <th>OSAT</th>
+                    <th>SOS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {preview.parsed.days
+                    .filter((d) => d.kind === "day")
+                    .slice(0, 8)
+                    .map((row) => (
+                      <tr key={`${row.date}-${row.kind}`}>
+                        <td className="py-2">{row.date}</td>
+                        <td>{row.salesActual?.toLocaleString() ?? "—"}</td>
+                        <td>{formatScore(row.osat)}</td>
+                        <td>{formatSos(row.dtSosTotalSec)}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {preview.parsed.intervals.length > 0 && (
+            <p className="mt-3 text-sm text-slate-600">
+              First interval {preview.parsed.intervals[0].label} on {preview.parsed.intervals[0].date} · last{" "}
+              {preview.parsed.intervals.at(-1)?.label}
+            </p>
+          )}
           <button
             type="button"
             className="btn-primary mt-4 bg-cfa hover:bg-cfa-dark"
@@ -202,13 +221,27 @@ export default function UploadScorecardPage() {
         </section>
       )}
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <TemplateCard
           title="Daily Data CSV"
           icon={FileSpreadsheet}
           href={asDownload(DAILY_CSV_TEMPLATE)}
           filename="cfa-hueytown-daily.csv"
           copy="Date, sales, labor, OSAT, and SOS columns. Headers can be workbook names or short aliases."
+        />
+        <TemplateCard
+          title="15-Minute CSV"
+          icon={FileSpreadsheet}
+          href={asDownload(INTERVAL_CSV_TEMPLATE)}
+          filename="cfa-hueytown-15min.csv"
+          copy="Title plus Business Date and Time / Sales / Trans / SOS / Cars. Also accepts glued PDF text."
+        />
+        <TemplateCard
+          title="CEMS CSV"
+          icon={FileText}
+          href={asDownload(CEMS_CSV_TEMPLATE)}
+          filename="cfa-hueytown-cems.csv"
+          copy="Overall satisfaction plus Accuracy, Clean, Taste, Temp, Fast, Courteous, Portion Size."
         />
         <TemplateCard
           title="Monthly P&L CSV"

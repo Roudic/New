@@ -4,9 +4,11 @@ import Link from "next/link";
 import {
   CalendarDays,
   CalendarRange,
+  Clock,
   Goal,
   Layers,
   LineChart,
+  Smile,
   Timer,
   Upload,
 } from "lucide-react";
@@ -31,9 +33,21 @@ const BRANCHES = [
     icon: CalendarDays,
   },
   {
+    href: "/scorecard/intervals",
+    title: "15-Minute",
+    copy: "Quarter-hour sales, cars, and SOS rolled up by daypart.",
+    icon: Clock,
+  },
+  {
+    href: "/scorecard/cems",
+    title: "CEMS / OSAT",
+    copy: "Overall satisfaction and guest attributes versus the 85 goal.",
+    icon: Smile,
+  },
+  {
     href: "/scorecard/drive-thru",
     title: "Drive-Thru SOS",
-    copy: "Breakfast, lunch, and dinner speed versus the 5:00 goal.",
+    copy: "Breakfast, lunch, afternoon, and dinner speed versus the 5:00 goal.",
     icon: Timer,
   },
   {
@@ -129,7 +143,8 @@ export default function ScorecardHubPage() {
               </p>
               <p className="mt-3 text-sm leading-relaxed text-white/90">
                 Daily rows drive every tile. Food cost and net profit come from the monthly P&amp;L
-                overlay. Upload the workbook PDF or a Daily Data CSV to refresh.
+                overlay. Upload the workbook PDF, a 15-minute report, CEMS, or a Daily Data CSV to
+                refresh.
               </p>
               <Link
                 href="/scorecard/upload"

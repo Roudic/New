@@ -17,6 +17,7 @@ function loadLocal(): ScorecardState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ScorecardState;
     if (!parsed || !Array.isArray(parsed.days)) return null;
+    if (!Array.isArray(parsed.intervals)) parsed.intervals = [];
     return parsed;
   } catch {
     return null;
@@ -100,7 +101,7 @@ export function useScorecard() {
         at: new Date().toISOString(),
         filename,
         kind: parsed.source,
-        rows: parsed.days.length,
+        rows: parsed.days.length + parsed.intervals.length,
         warnings: parsed.warnings.map((w) => w.message),
       });
       await persist(next);

@@ -5,9 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import {
   CalendarDays,
+  Clock,
   Gauge,
   Goal,
   LineChart,
+  Smile,
   Timer,
   Upload,
   CalendarRange,
@@ -19,6 +21,8 @@ import { useApp } from "@/context/AppContext";
 const LINKS = [
   { href: "/scorecard", label: "Hub", icon: Gauge, exact: true },
   { href: "/scorecard/daily", label: "Daily", icon: CalendarDays },
+  { href: "/scorecard/intervals", label: "15-Minute", icon: Clock },
+  { href: "/scorecard/cems", label: "CEMS", icon: Smile },
   { href: "/scorecard/drive-thru", label: "Drive-Thru", icon: Timer },
   { href: "/scorecard/monthly", label: "Monthly", icon: CalendarRange },
   { href: "/scorecard/quarterly", label: "Quarterly", icon: Layers },

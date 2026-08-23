@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/PageHeader";
 import { useScorecard } from "@/hooks/useScorecard";
-import { activeYearMonth, goalsForYear, operatingDays, sosBand } from "@/lib/scorecard/calculations";
+import { activeYearMonth, goalsForYear, sosBand } from "@/lib/scorecard/calculations";
 import { formatPercent, formatSos } from "@/lib/scorecard/format";
 
 function variance(seconds: number | undefined, goalSec: number): number | null {
@@ -26,9 +26,19 @@ export default function DriveThruPage() {
   const { year } = activeYearMonth(state);
   const goals = goalsForYear(state, year);
   const goalSec = goals.dtSosGoalMin * 60;
-  const rows = operatingDays(state.days).filter((d) => d.dtSosTotalSec || d.dtSosBreakfastSec);
+  const rows = state.days.filter(
+    (d) =>
+      d.kind === "day" &&
+      (d.dtSosTotalSec ||
+        d.dtSosBreakfastSec ||
+        d.dtSosLunchSec ||
+        d.dtSosAfternoonSec ||
+        d.dtSosDinnerSec)
+  );
 
-  const avg = (key: "dtSosTotalSec" | "dtSosBreakfastSec" | "dtSosLunchSec" | "dtSosDinnerSec") => {
+  const avg = (
+    key: "dtSosTotalSec" | "dtSosBreakfastSec" | "dtSosLunchSec" | "dtSosAfternoonSec" | "dtSosDinnerSec"
+  ) => {
     const values = rows.map((r) => r[key]).filter((n): n is number => n != null);
     if (!values.length) return undefined;
     return values.reduce((s, n) => s + n, 0) / values.length;
@@ -42,10 +52,11 @@ export default function DriveThruPage() {
         description={`Average total time versus a ${goals.dtSosGoalMin}:00 goal (${goalSec} seconds). Green is at or under goal, amber is 5:00–7:30, red is over 7:30.`}
       />
 
-      <section className="mb-6 grid gap-4 md:grid-cols-4">
+      <section className="mb-6 grid gap-4 md:grid-cols-5">
         <Daypart label="Total" seconds={avg("dtSosTotalSec")} goalSec={goalSec} />
         <Daypart label="Breakfast" seconds={avg("dtSosBreakfastSec")} goalSec={goalSec} />
         <Daypart label="Lunch" seconds={avg("dtSosLunchSec")} goalSec={goalSec} />
+        <Daypart label="Afternoon" seconds={avg("dtSosAfternoonSec")} goalSec={goalSec} />
         <Daypart label="Dinner" seconds={avg("dtSosDinnerSec")} goalSec={goalSec} />
       </section>
 
@@ -58,6 +69,7 @@ export default function DriveThruPage() {
               <th className="px-3 py-3">vs Goal</th>
               <th className="px-3 py-3">Breakfast</th>
               <th className="px-3 py-3">Lunch</th>
+              <th className="px-3 py-3">Afternoon</th>
               <th className="px-3 py-3">Dinner</th>
             </tr>
           </thead>
@@ -79,6 +91,9 @@ export default function DriveThruPage() {
                 </td>
                 <td className="px-3 py-2.5">
                   <Band seconds={row.dtSosLunchSec} />
+                </td>
+                <td className="px-3 py-2.5">
+                  <Band seconds={row.dtSosAfternoonSec} />
                 </td>
                 <td className="px-3 py-2.5">
                   <Band seconds={row.dtSosDinnerSec} />

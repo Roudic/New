@@ -1,5 +1,24 @@
 export type DayStatus = "Open" | "Closed";
 export type RowKind = "day" | "week";
+export type Daypart = "breakfast" | "lunch" | "afternoon" | "dinner";
+export type DailyOrigin = "daily" | "interval" | "cems" | "sos";
+export type ScorecardKind = "daily" | "monthly" | "goals" | "interval" | "cems" | "sos";
+
+export interface IntervalRow {
+  date: string;
+  dayOfWeek: string;
+  startMin: number;
+  label: string;
+  daypart: Daypart;
+  sales?: number;
+  trans?: number;
+  cars?: number;
+  sosSec?: number;
+  orderSec?: number;
+  windowSec?: number;
+  labor?: number;
+  hours?: number;
+}
 
 export interface DailyRow {
   date: string;
@@ -37,6 +56,7 @@ export interface DailyRow {
   donations?: number;
   pto?: number;
   notes?: string;
+  origin?: DailyOrigin;
 }
 
 export interface MonthlyManual {
@@ -71,6 +91,7 @@ export interface ScorecardState {
   days: DailyRow[];
   monthly: MonthlyManual[];
   goals: ScorecardGoals[];
+  intervals: IntervalRow[];
   lastImport?: ImportMeta;
 }
 
@@ -84,7 +105,9 @@ export interface ParseResult {
   days: DailyRow[];
   monthly: MonthlyManual[];
   goals: ScorecardGoals[];
+  intervals: IntervalRow[];
   warnings: ParseWarning[];
+  kinds: ScorecardKind[];
   source: "csv" | "pdf";
 }
 
@@ -158,5 +181,48 @@ export function emptyScorecard(): ScorecardState {
     days: [],
     monthly: [],
     goals: [DEFAULT_GOALS_2025, DEFAULT_GOALS_2026],
+    intervals: [],
   };
+}
+
+export const DAYPART_LABEL: Record<Daypart, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  afternoon: "Afternoon",
+  dinner: "Dinner",
+};
+
+export const OSAT_ATTRIBUTES: Array<{
+  key: keyof DailyRow;
+  label: string;
+}> = [
+  { key: "osat", label: "Overall satisfaction" },
+  { key: "osatAccuracy", label: "Accuracy" },
+  { key: "osatClean", label: "Clean" },
+  { key: "osatTaste", label: "Taste" },
+  { key: "osatTemp", label: "Temp" },
+  { key: "osatFast", label: "Fast" },
+  { key: "osatCourteous", label: "Courteous" },
+  { key: "osatPortion", label: "Portion size" },
+];
+
+export function emptyParseResult(source: "csv" | "pdf"): ParseResult {
+  return {
+    days: [],
+    monthly: [],
+    goals: [],
+    intervals: [],
+    warnings: [],
+    kinds: [],
+    source,
+  };
+}
+
+export function hasParseableContent(parsed: ParseResult): boolean {
+  return (
+    parsed.days.length > 0 ||
+    parsed.monthly.length > 0 ||
+    parsed.goals.length > 0 ||
+    parsed.intervals.length > 0
+  );
 }

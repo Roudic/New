@@ -1,5 +1,10 @@
+import { normalizeHeader, parseCsvRows } from "./csv-rows";
+import { combineParseResults } from "./merge";
+import { looksLikeCemsReport, parseCemsText } from "./parse-cems";
+import { looksLikeIntervalReport, parseIntervalText } from "./parse-interval";
+import { parseSosText } from "./parse-sos";
 import type { DailyRow, MonthlyManual, ParseResult, ParseWarning, ScorecardGoals } from "./types";
-import { DEFAULT_GOALS_2026 } from "./types";
+import { DEFAULT_GOALS_2026, emptyParseResult } from "./types";
 import {
   isBlank,
   normalizePercent,
@@ -71,14 +76,6 @@ const HEADER_ALIASES: Record<string, string> = {
   kind: "kind",
 };
 
-function normalizeHeader(header: string): string {
-  return header
-    .toLowerCase()
-    .replace(/[$%()]/g, "")
-    .replace(/[^a-z0-9]+/g, "")
-    .trim();
-}
-
 function mapHeader(header: string): string | undefined {
   const key = normalizeHeader(header);
   if (HEADER_ALIASES[key]) return HEADER_ALIASES[key];
@@ -87,50 +84,7 @@ function mapHeader(header: string): string | undefined {
   return undefined;
 }
 
-export function parseCsvRows(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-
-  const input = text.replace(/^\uFEFF/, "");
-  for (let i = 0; i < input.length; i += 1) {
-    const ch = input[i];
-    if (quoted) {
-      if (ch === '"') {
-        if (input[i + 1] === '"') {
-          cell += '"';
-          i += 1;
-        } else {
-          quoted = false;
-        }
-      } else {
-        cell += ch;
-      }
-      continue;
-    }
-    if (ch === '"') {
-      quoted = true;
-      continue;
-    }
-    if (ch === ",") {
-      row.push(cell.trim());
-      cell = "";
-      continue;
-    }
-    if (ch === "\n") {
-      row.push(cell.trim());
-      if (row.some((c) => c)) rows.push(row);
-      row = [];
-      cell = "";
-      continue;
-    }
-    if (ch !== "\r") cell += ch;
-  }
-  row.push(cell.trim());
-  if (row.some((c) => c)) rows.push(row);
-  return rows;
-}
+export { parseCsvRows } from "./csv-rows";
 
 function fieldNumber(row: Record<string, string>, key: string): number | undefined {
   return parseNumber(row[key]);
@@ -148,7 +102,12 @@ function fieldDuration(row: Record<string, string>, key: string): number | undef
   return parseDurationSeconds(row[key]);
 }
 
-function detectKind(rows: string[][]): "daily" | "monthly" | "goals" | "unknown" {
+function detectKind(
+  rows: string[][],
+  text: string
+): "daily" | "monthly" | "goals" | "interval" | "cems" | "unknown" {
+  if (looksLikeIntervalReport(text)) return "interval";
+  if (looksLikeCemsReport(text)) return "cems";
   const headers = rows[0]?.map(normalizeHeader) ?? [];
   if (headers.includes("date") || headers.includes("salesactual")) return "daily";
   if (headers.includes("month") && (headers.includes("foodcostpct") || headers.includes("foodcost"))) {
@@ -268,16 +227,13 @@ function parseGoalsCsv(headers: string[], body: string[][]): ScorecardGoals[] {
     });
 }
 
-export function parseCsvText(text: string): ParseResult {
+function parseCsvCore(text: string): ParseResult {
   const warnings: ParseWarning[] = [];
   const rows = parseCsvRows(text);
   if (rows.length < 2) {
     return {
-      days: [],
-      monthly: [],
-      goals: [],
+      ...emptyParseResult("csv"),
       warnings: [{ message: "CSV needs a header row and at least one data row." }],
-      source: "csv",
     };
   }
 
@@ -287,11 +243,11 @@ export function parseCsvText(text: string): ParseResult {
   if (mapped.length < 2) {
     warnings.push({
       message:
-        "Could not recognize enough column headers. Use the Daily Data template or include Date and Sales Actual.",
+        "Could not recognize enough column headers. Use the Daily Data, 15-minute, or CEMS template.",
     });
   }
 
-  const kind = detectKind(rows);
+  const kind = detectKind(rows, text);
   const days = kind === "monthly" || kind === "goals" ? [] : parseDailyCsv(headers, body, warnings);
   const monthly = kind === "monthly" ? parseMonthlyCsv(headers, body) : [];
   const goals = kind === "goals" ? parseGoalsCsv(headers, body) : [];
@@ -300,7 +256,34 @@ export function parseCsvText(text: string): ParseResult {
     warnings.push({ message: "CSV format was not recognized as daily, monthly, or goals data." });
   }
 
-  return { days, monthly, goals, warnings, source: "csv" };
+  const kinds =
+    kind === "daily" || kind === "monthly" || kind === "goals" ? [kind] : days.length ? (["daily"] as const) : [];
+
+  return {
+    days: days.map((row) => ({ ...row, origin: row.origin ?? "daily" })),
+    monthly,
+    goals,
+    intervals: [],
+    warnings,
+    kinds: [...kinds],
+    source: "csv",
+  };
+}
+
+export function parseCsvText(text: string): ParseResult {
+  const kind = detectKind(parseCsvRows(text), text);
+  const parts: ParseResult[] = [];
+  if (kind === "interval" || looksLikeIntervalReport(text)) {
+    parts.push(parseIntervalText(text, "csv"));
+  }
+  if (kind === "cems" || looksLikeCemsReport(text)) {
+    parts.push(parseCemsText(text, "csv"));
+  }
+  if (kind === "daily" || kind === "monthly" || kind === "goals" || kind === "unknown") {
+    parts.push(parseCsvCore(text));
+  }
+  parts.push(parseSosText(text, "csv"));
+  return combineParseResults("csv", parts);
 }
 
 export const DAILY_CSV_TEMPLATE = `Date,Day,Open/Closed,Sales LY,Sales Goal,Sales Actual,Labor Actual $,Labor %,Labor Productivity,Trans TY,Trans LY,OSAT,OSAT Accuracy,OSAT Clean,OSAT Taste,OSAT Temp,OSAT Fast,OSAT Courteous,DT SOS Total,DT SOS Breakfast,DT SOS Lunch,DT SOS Afternoon,DT SOS Dinner,Timers

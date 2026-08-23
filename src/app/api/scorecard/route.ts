@@ -13,6 +13,10 @@ function isState(value: unknown): value is ScorecardState {
   return Boolean(value && typeof value === "object" && Array.isArray((value as ScorecardState).days));
 }
 
+function withIntervals(state: ScorecardState): ScorecardState {
+  return Array.isArray(state.intervals) ? state : { ...state, intervals: [] };
+}
+
 export async function GET() {
   try {
     await ensureScorecardTable();
@@ -24,7 +28,7 @@ export async function GET() {
     if (!isState(parsed)) {
       return NextResponse.json({ state: seedScorecard(), seeded: true });
     }
-    return NextResponse.json({ state: parsed, seeded: false });
+    return NextResponse.json({ state: withIntervals(parsed), seeded: false });
   } catch {
     return NextResponse.json({ state: seedScorecard(), seeded: true, offline: true });
   }
@@ -39,17 +43,18 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Invalid scorecard payload." }, { status: 400 });
   }
 
+  const state = withIntervals(body.state);
   await ensureScorecardTable();
   const saved = await prisma.scorecardStore.upsert({
     where: { id: STORE_ID },
     create: {
       id: STORE_ID,
-      location: body.state.location,
-      payload: JSON.stringify(body.state),
+      location: state.location,
+      payload: JSON.stringify(state),
     },
     update: {
-      location: body.state.location,
-      payload: JSON.stringify(body.state),
+      location: state.location,
+      payload: JSON.stringify(state),
     },
   });
 
