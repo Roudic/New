@@ -30,17 +30,35 @@ const HEADER_ALIASES: Record<string, string> = {
   start: "time",
   starttime: "time",
   period: "time",
+  timeincrement: "time",
+  timeperiod: "time",
+  timeofday: "time",
+  fifteenminute: "time",
+  fifteenmin: "time",
+  qtrhour: "time",
+  quarterhour: "time",
+  quarter: "time",
   sales: "sales",
   netsales: "sales",
   salesactual: "sales",
+  salesamount: "sales",
+  netsalesamount: "sales",
+  grosssales: "sales",
   trans: "trans",
   transactions: "trans",
   transcount: "trans",
   guestcount: "trans",
   guests: "trans",
+  gc: "trans",
+  checkcount: "trans",
+  ticketcount: "trans",
+  tickets: "trans",
+  covers: "trans",
   cars: "cars",
   carcount: "cars",
   vehicles: "cars",
+  drivethrucars: "cars",
+  dtcars: "cars",
   sos: "sos",
   dtsos: "sos",
   speedofservice: "sos",
@@ -63,7 +81,7 @@ function mapHeader(header: string): string | undefined {
 }
 
 function looksLikeIntervalTitle(text: string): boolean {
-  return /15\s*[-–]?\s*min(?:ute)?s?|quarter\s*hour/i.test(text);
+  return /15\s*[-–]?\s*min(?:ute)?s?|quarter\s*hour|time\s*increment|qtr\s*hour/i.test(text);
 }
 
 function isQuarterClock(raw: string): boolean {
@@ -86,6 +104,11 @@ function headerRowIndex(rows: string[][]): number {
     const mapped = row.map(mapHeader).filter(Boolean);
     return mapped.includes("time") && mapped.length >= 2;
   });
+}
+
+function isSummaryRow(record: Record<string, string>, cells: string[]): boolean {
+  const blob = `${record.time ?? ""} ${record.date ?? ""} ${cells.join(" ")}`.toLowerCase();
+  return /\b(grand\s*total|day\s*total|all\s*day|hourly\s*total|subtotal|\btotal\b)\b/.test(blob);
 }
 
 function toRecord(headers: string[], cells: string[]): Record<string, string> {
@@ -191,6 +214,7 @@ function parseCsvIntervals(text: string): IntervalRow[] {
 
   for (const cells of rows.slice(headerAt + 1)) {
     const record = toRecord(headers, cells);
+    if (isSummaryRow(record, cells)) continue;
     const date = parseDateToken(record.date) ?? fallbackDate;
     const startMin = parseIntervalClock(record.time);
     if (!date || startMin == null) continue;
@@ -223,7 +247,7 @@ function parseTextIntervals(text: string): IntervalRow[] {
   const intervals: IntervalRow[] = [];
   for (const raw of text.split(/\n/)) {
     const line = raw.trim();
-    if (!line) continue;
+    if (!line || /\b(grand\s*total|day\s*total|all\s*day|subtotal|\btotal\b)\b/i.test(line)) continue;
     const dateInRow =
       parseDateToken(line.match(/\b(\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b/)?.[1] ?? "") ??
       fallbackDate;
@@ -263,7 +287,7 @@ export function parseIntervalText(text: string, source: "csv" | "pdf" = "csv"): 
   const result = emptyParseResult(source);
   if (!looksLikeIntervalReport(text)) return result;
 
-  const fromCsv = text.includes(",") ? parseCsvIntervals(text) : [];
+  const fromCsv = parseCsvIntervals(text);
   const intervals = fromCsv.length ? fromCsv : parseTextIntervals(text);
   if (!intervals.length) {
     result.warnings.push({ message: "Found a 15-minute report title, but no interval rows could be read." });

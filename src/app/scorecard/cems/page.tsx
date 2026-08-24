@@ -32,7 +32,7 @@ export default function CemsPage() {
       <PageHeader
         eyebrow="CEMS"
         title="Guest experience"
-        description="Overall satisfaction and attribute scores from CEMS PDFs or Daily Data. Bars are measured against the OSAT goal."
+        description="Upload the CEMS PDF from email or Pathway — it is not a spreadsheet CSV. Scores land on the report date. Bars are measured against the OSAT goal."
       />
 
       <section className="mb-6 grid gap-4 lg:grid-cols-3">

@@ -28,7 +28,7 @@ export default function DailyScorecardPage() {
       <PageHeader
         eyebrow="Daily Data"
         title="Operating days"
-        description="One row per day from the Hueytown Daily Data sheet. Closed Sundays stay out of the averages."
+        description="One row per day. A 15-minute CSV from your phone is added up to that day's sales and transactions. Closed Sundays stay out of the averages."
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">

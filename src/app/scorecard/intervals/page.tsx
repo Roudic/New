@@ -36,13 +36,16 @@ export default function IntervalScorecardPage() {
   const rows = state.intervals.filter((row) => row.date === date).sort((a, b) => a.startMin - b.startMin);
   const day = rows[0];
   const parts = daypartSubtotals(rows);
+  const daySales = rows.reduce((sum, row) => sum + (row.sales ?? 0), 0);
+  const dayTrans = rows.reduce((sum, row) => sum + (row.trans ?? 0), 0);
+  const scoredDay = state.days.find((row) => row.date === date && row.kind === "day");
 
   return (
     <>
       <PageHeader
         eyebrow="15-Minute"
         title="Quarter-hour board"
-        description="Business date, weekday, and each 15-minute interval. SOS is color-coded against the 5:00 goal; daypart tiles are weighted by cars or transactions."
+        description="Each 15-minute bucket is added up to the day's sales, transactions, and daypart SOS. Upload a 15-minute CSV or Excel from your phone to fill a new day."
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -64,6 +67,28 @@ export default function IntervalScorecardPage() {
           {day ? `${day.dayOfWeek} · ${rows.length} intervals` : "No 15-minute rows yet"}
         </p>
       </div>
+
+      {rows.length > 0 && (
+        <section className="mb-6 glass-panel border-t-4 border-t-cfa p-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+            {day?.dayOfWeek} · {date} · day total from 15-minute rows
+          </p>
+          <div className="mt-3 flex flex-wrap gap-6">
+            <div>
+              <p className="text-sm text-slate-500">Sales</p>
+              <p className="text-3xl font-bold text-slate-900">{formatMoney(daySales || scoredDay?.salesActual)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Transactions</p>
+              <p className="text-3xl font-bold text-slate-900">{formatCount(dayTrans || scoredDay?.transTy)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-slate-500">Intervals</p>
+              <p className="text-3xl font-bold text-slate-900">{rows.length}</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="mb-6 grid gap-4 md:grid-cols-4">
         {parts.map((part) => (

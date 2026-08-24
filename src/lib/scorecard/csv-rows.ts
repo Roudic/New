@@ -1,10 +1,21 @@
-export function parseCsvRows(text: string): string[][] {
+export function detectDelimiter(text: string): string {
+  const sample = text.split(/\n/).slice(0, 12).join("\n");
+  const commas = (sample.match(/,/g) ?? []).length;
+  const tabs = (sample.match(/\t/g) ?? []).length;
+  const semis = (sample.match(/;/g) ?? []).length;
+  if (tabs > commas && tabs >= semis) return "\t";
+  if (semis > commas && semis >= tabs) return ";";
+  return ",";
+}
+
+export function parseCsvRows(text: string, delimiter?: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cell = "";
   let quoted = false;
+  const sep = delimiter ?? detectDelimiter(text);
 
-  const input = text.replace(/^\uFEFF/, "");
+  const input = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   for (let i = 0; i < input.length; i += 1) {
     const ch = input[i];
     if (quoted) {
@@ -24,7 +35,7 @@ export function parseCsvRows(text: string): string[][] {
       quoted = true;
       continue;
     }
-    if (ch === ",") {
+    if (ch === sep) {
       row.push(cell.trim());
       cell = "";
       continue;

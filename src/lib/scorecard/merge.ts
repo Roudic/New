@@ -8,14 +8,6 @@ import type {
 } from "./types";
 import { emptyScorecard } from "./types";
 
-const SALES_LABOR_KEYS: Array<keyof DailyRow> = [
-  "salesLy",
-  "salesGoal",
-  "salesActual",
-  "laborActual",
-  "laborProductivity",
-];
-
 const FILL_FROM_INTERVAL_SOS: Array<keyof DailyRow> = [
   "transTy",
   "transLy",
@@ -73,14 +65,17 @@ function fillMissing(prev: DailyRow, incoming: DailyRow, keys: Array<keyof Daily
 
 export function mergeDayRow(prev: DailyRow | undefined, incoming: DailyRow): DailyRow {
   if (!prev) return incoming;
-  if (incoming.origin === "interval" || incoming.origin === "sos") {
+  if (incoming.origin === "interval") {
     const filled = fillMissing(prev, incoming, FILL_FROM_INTERVAL_SOS);
-    for (const key of SALES_LABOR_KEYS) {
-      if (filled[key] == null && incoming[key] != null) {
-        (filled as unknown as Record<string, unknown>)[key as string] = incoming[key];
-      }
+    if (incoming.salesActual != null) filled.salesActual = incoming.salesActual;
+    if (incoming.transTy != null) filled.transTy = incoming.transTy;
+    if (filled.laborActual == null && incoming.laborActual != null) {
+      filled.laborActual = incoming.laborActual;
     }
     return filled;
+  }
+  if (incoming.origin === "sos") {
+    return fillMissing(prev, incoming, FILL_FROM_INTERVAL_SOS);
   }
   if (incoming.origin === "cems") {
     const next = { ...prev };
