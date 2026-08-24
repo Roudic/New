@@ -52,7 +52,7 @@ export default function UploadScorecardPage() {
         return;
       }
       const text = decodeTextBuffer(buffer);
-      let parsed = parseScorecardText(text, name);
+      const parsed = parseScorecardText(text, name);
       if (!hasParseableContent(parsed)) {
         try {
           setPreview(await parseOnServer(file));

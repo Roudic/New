@@ -8,14 +8,6 @@ import type {
 } from "./types";
 import { emptyScorecard } from "./types";
 
-const SALES_LABOR_KEYS: Array<keyof DailyRow> = [
-  "salesLy",
-  "salesGoal",
-  "salesActual",
-  "laborActual",
-  "laborProductivity",
-];
-
 const FILL_FROM_INTERVAL_SOS: Array<keyof DailyRow> = [
   "transTy",
   "transLy",
