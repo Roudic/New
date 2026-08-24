@@ -3,7 +3,13 @@
 import { useApp } from "@/context/AppContext";
 import { NavBar } from "@/components/NavBar";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  wide = false,
+}: {
+  children: React.ReactNode;
+  wide?: boolean;
+}) {
   const { hydrated, isLoggedIn } = useApp();
 
   if (!hydrated) {
@@ -26,7 +32,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="pointer-events-none fixed inset-0 bg-grid-pattern bg-grid opacity-40" />
       <div className="relative">
         <NavBar />
-        <main className="mx-auto max-w-6xl px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-6 md:pb-10">
+        <main
+          className={`mx-auto px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-6 md:pb-10 ${
+            wide ? "max-w-7xl" : "max-w-6xl"
+          }`}
+        >
           {children}
         </main>
       </div>

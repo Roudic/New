@@ -81,6 +81,13 @@ CREATE TABLE IF NOT EXISTS "TaskCompletion" (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+
+CREATE TABLE IF NOT EXISTS "ScorecardStore" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "location" TEXT NOT NULL DEFAULT 'Chick-fil-A Hueytown',
+    "payload" TEXT NOT NULL,
+    "updatedAt" DATETIME NOT NULL
+);
 `;
 
 const MIGRATION_SQL = `

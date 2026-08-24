@@ -142,6 +142,13 @@ model JournalEntry {
   @@index([notebookId])
 }
 
+model ScorecardStore {
+  id        String   @id @default("hueytown")
+  location  String   @default("Chick-fil-A Hueytown")
+  payload   String
+  updatedAt DateTime @updatedAt
+}
+
 model TaskCompletion {
   id            String   @id @default(cuid())
   runId         String

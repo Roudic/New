@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ClipboardList,
+  Gauge,
   LayoutDashboard,
   ListChecks,
   LogOut,
@@ -23,6 +24,7 @@ export function NavBar() {
   const navItems = isAdmin
     ? [
         { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/scorecard", label: "Scorecard", icon: Gauge },
         { href: "/admin/assignments", label: "Assignments", icon: ListChecks },
         { href: "/admin/team", label: "Team", icon: Users },
         { href: "/checklists", label: "Audits", icon: ClipboardList },
@@ -30,6 +32,7 @@ export function NavBar() {
       ]
     : [
         { href: "/employee", label: "My Tasks", icon: LayoutDashboard },
+        { href: "/scorecard", label: "Scorecard", icon: Gauge },
         { href: "/journal", label: "Journal", icon: NotebookPen },
         { href: "/history", label: "History", icon: ClipboardList },
         { href: "/settings", label: "Settings", icon: Settings },
