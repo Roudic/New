@@ -12,4 +12,4 @@ export {
   GOALS_CSV_TEMPLATE,
 } from "./parse-csv";
 export { INTERVAL_CSV_TEMPLATE } from "./parse-interval";
-export { CEMS_CSV_TEMPLATE } from "./parse-cems";
+export { CEMS_CSV_TEMPLATE, CEMS_PDF_SAMPLE } from "./parse-cems";
