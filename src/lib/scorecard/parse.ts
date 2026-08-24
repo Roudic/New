@@ -34,8 +34,10 @@ function looksLikeCsv(text: string, filename = ""): boolean {
   if (filename.toLowerCase().endsWith(".csv")) return true;
   const first = text.split(/\n/).find((line) => line.trim()) ?? "";
   return (
-    first.includes(",") &&
-    /date|sales|labor|osat|time|interval|trans|cems|accuracy|clean|sos|cars/i.test(first + "\n" + text.slice(0, 400))
+    (first.includes(",") || first.includes("\t") || first.includes(";")) &&
+    /date|sales|labor|osat|time|interval|trans|cems|accuracy|clean|sos|cars|increment/i.test(
+      first + "\n" + text.slice(0, 400)
+    )
   );
 }
 

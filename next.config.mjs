@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["pdf-parse"],
+    serverComponentsExternalPackages: ["pdf-parse", "xlsx"],
   },
   // Allow phones on the same Wi-Fi to load dev assets (Next.js 14.2+)
   allowedDevOrigins: [

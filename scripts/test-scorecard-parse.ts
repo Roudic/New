@@ -5,6 +5,7 @@ import { parseIntervalText, rollupIntervals } from "../src/lib/scorecard/parse-i
 import { parseScorecardText } from "../src/lib/scorecard/parse";
 import { parseSosText } from "../src/lib/scorecard/parse-sos";
 import { parseWorkbookText } from "../src/lib/scorecard/parse-workbook";
+import { decodeTextBuffer } from "../src/lib/scorecard/decode-text";
 import { rollupMonth } from "../src/lib/scorecard/calculations";
 import { mergeParseResult } from "../src/lib/scorecard/merge";
 import { seedJune12Intervals } from "../src/lib/scorecard/seed-intervals";
@@ -147,6 +148,11 @@ Accuracy 8500%
   );
   close(buggy.days[0]?.osat, 69.4, "CEMS decimal OSAT");
   close(buggy.days[0]?.osatAccuracy, 85, "CEMS 8500% accuracy");
+
+  const fromPdf = parseScorecardText(fixture, "CEMS-Hueytown.pdf");
+  assert(fromPdf.kinds.includes("cems"), "CEMS PDF kind");
+  close(fromPdf.days[0]?.osat, 69.4, "CEMS PDF OSAT");
+  close(fromPdf.days[0]?.osatAccuracy, 94, "CEMS PDF accuracy");
   console.log("ok CEMS fixture");
 }
 
@@ -188,7 +194,7 @@ function testSeedIntervalsAndMerge() {
       dayOfWeek: "Friday",
       status: "Open",
       kind: "day",
-      salesActual: 31395,
+      salesActual: 1000,
       laborActual: 6998,
     },
   ];
@@ -201,11 +207,41 @@ function testSeedIntervalsAndMerge() {
     kinds: ["interval"],
     source: "csv",
   });
-  assert(merged.days[0].salesActual === 31395, "merge keeps sales");
+  assert(merged.days[0].salesActual === 31395, "15-minute rows become the day's sales");
+  assert(merged.days[0].transTy === 1998, "15-minute rows become the day's transactions");
   assert(merged.days[0].laborActual === 6998, "merge keeps labor");
   close(merged.days[0].dtSosTotalSec, 423, "merge fills SOS");
   assert(merged.intervals.length === 64, "merge stores intervals");
-  console.log("ok seed intervals + merge fill");
+  console.log("ok seed intervals + merge day sales from 15-min");
+}
+
+function testPhoneCsvFormats() {
+  const tsv = [
+    "Business Date\tTime Increment\tNet Sales\tGuest Count\tDT Cars\tDT SOS",
+    "6/12/2026\t5:00 PM\t$412.00\t28\t19\t0:03:41",
+    "6/12/2026\t5:15 PM\t388.50\t24\t16\t3:55",
+    "6/12/2026\tTotal\t$800.50\t52\t35\t",
+  ].join("\n");
+  const parsed = parseCsvText(tsv);
+  assert(parsed.kinds.includes("interval"), `TSV interval kind ${parsed.kinds}`);
+  assert(parsed.intervals.length === 2, `TSV interval rows ${parsed.intervals.length}`);
+  assert(parsed.intervals[0].sales === 412, `net sales ${parsed.intervals[0].sales}`);
+  assert(parsed.intervals[0].trans === 28, `guest count ${parsed.intervals[0].trans}`);
+  assert(parsed.intervals[0].cars === 19, `dt cars ${parsed.intervals[0].cars}`);
+  close(parsed.days[0]?.salesActual, 800.5, "day sales from 15-min TSV");
+  assert(parsed.days[0]?.transTy === 52, `day guests from 15-min ${parsed.days[0]?.transTy}`);
+
+  const crOnly = "Business Date;Time Increment;Net Sales;Guest Count\r6/12/2026;17:00;$200.00;12\r6/12/2026;17:15;150;10";
+  const semi = parseCsvText(crOnly);
+  assert(semi.intervals.length === 2, `CR/semicolon intervals ${semi.intervals.length}`);
+  close(semi.days[0]?.salesActual, 350, "semicolon 15-min day sales");
+
+  const utf16 = Buffer.from("\uFEFFBusiness Date,Time Increment,Net Sales,Guest Count\n6/12/2026,6:00 AM,245,18\n", "utf16le");
+  const decoded = decodeTextBuffer(utf16);
+  const fromPhone = parseScorecardText(decoded, "15min.csv");
+  assert(fromPhone.intervals.length === 1, `UTF-16 interval ${fromPhone.intervals.length}`);
+  close(fromPhone.days[0]?.salesActual, 245, "UTF-16 phone CSV day sales");
+  console.log("ok phone CSV / TSV / 15-min day totals");
 }
 
 async function main() {
@@ -215,6 +251,7 @@ async function main() {
   testCemsFixture();
   testStandaloneSos();
   testSeedIntervalsAndMerge();
+  testPhoneCsvFormats();
   console.log("ok: all scorecard parser tests passed");
 }
 

@@ -35,7 +35,7 @@ const BRANCHES = [
   {
     href: "/scorecard/intervals",
     title: "15-Minute",
-    copy: "Quarter-hour sales, cars, and SOS rolled up by daypart.",
+    copy: "Each 15-minute sales row adds up to that day's total sales.",
     icon: Clock,
   },
   {

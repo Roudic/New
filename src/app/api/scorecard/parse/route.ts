@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
 import pdf from "pdf-parse";
+import {
+  decodeTextBuffer,
+  isPdfBuffer,
+  isZipBuffer,
+  looksLikeSpreadsheetName,
+  workbookBufferToCsv,
+} from "@/lib/scorecard/decode-upload";
 import { parseScorecardText } from "@/lib/scorecard/parse";
 import { hasParseableContent, type ParseResult } from "@/lib/scorecard/types";
 
@@ -10,26 +17,31 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Choose a CSV, PDF, or text file to upload." }, { status: 400 });
+    return NextResponse.json({ error: "Choose a CSV, Excel, PDF, or text file to upload." }, { status: 400 });
   }
 
   const filename = file.name || "upload";
   const buffer = Buffer.from(await file.arrayBuffer());
+  const bytes = new Uint8Array(buffer);
   const lower = filename.toLowerCase();
 
   try {
     let parsed: ParseResult;
-    if (lower.endsWith(".pdf") || file.type === "application/pdf") {
+    if (isPdfBuffer(bytes) || lower.endsWith(".pdf") || file.type === "application/pdf") {
       const extracted = await pdf(buffer);
-      parsed = parseScorecardText(extracted.text, filename);
+      parsed = parseScorecardText(extracted.text, filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
+    } else if (isZipBuffer(bytes) || looksLikeSpreadsheetName(filename, file.type)) {
+      const csv = workbookBufferToCsv(buffer);
+      parsed = parseScorecardText(csv, filename.replace(/\.(xlsx|xls|xlsm)$/i, ".csv"));
     } else {
-      parsed = parseScorecardText(buffer.toString("utf8"), filename);
+      parsed = parseScorecardText(decodeTextBuffer(buffer), filename);
     }
 
     if (!hasParseableContent(parsed)) {
       return NextResponse.json(
         {
-          error: "No scorecard rows were found in that file.",
+          error:
+            "No scorecard rows were found. For phone uploads, send a CSV or Excel 15-minute / Daily Data / CEMS file — not a screenshot.",
           parsed,
         },
         { status: 422 }
@@ -43,7 +55,7 @@ export async function POST(req: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Could not read that file. Try a Daily Data, 15-minute, CEMS, or SOS export.",
+            : "Could not read that file. Try a CSV or Excel export from Files on your phone.",
       },
       { status: 400 }
     );

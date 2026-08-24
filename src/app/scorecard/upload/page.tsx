@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { FileSpreadsheet, FileText, Upload } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useScorecard } from "@/hooks/useScorecard";
@@ -11,13 +11,14 @@ import {
   MONTHLY_CSV_TEMPLATE,
 } from "@/lib/scorecard/parse-csv";
 import { INTERVAL_CSV_TEMPLATE } from "@/lib/scorecard/parse-interval";
+import { decodeTextBuffer } from "@/lib/scorecard/decode-text";
+import { shouldSendToServer } from "@/lib/scorecard/decode-upload";
 import { parseScorecardText } from "@/lib/scorecard/parse";
 import { formatScore, formatSos } from "@/lib/scorecard/format";
 import { hasParseableContent, type ParseResult } from "@/lib/scorecard/types";
 
 export default function UploadScorecardPage() {
   const { applyParse, resetToSeed, state, saving } = useScorecard();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<"merge" | "replace">("merge");
@@ -25,30 +26,44 @@ export default function UploadScorecardPage() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
+  const parseOnServer = async (file: File) => {
+    const body = new FormData();
+    body.set("file", file);
+    const res = await fetch("/api/scorecard/parse", { method: "POST", body });
+    const json = (await res.json()) as { parsed?: ParseResult; error?: string; filename?: string };
+    if (!res.ok || !json.parsed) {
+      throw new Error(json.error ?? "Could not read that file.");
+    }
+    return { parsed: json.parsed, filename: json.filename ?? (file.name || "upload") };
+  };
+
   const parseFile = async (file: File) => {
     setBusy(true);
     setError(null);
     setDone(null);
     setPreview(null);
     try {
-      const lower = file.name.toLowerCase();
-      const isPdf = lower.endsWith(".pdf") || file.type === "application/pdf";
-      if (!isPdf) {
-        const parsed = parseScorecardText(await file.text(), file.name);
-        if (!hasParseableContent(parsed)) {
-          throw new Error(parsed.warnings[0]?.message ?? "No scorecard rows in that file.");
-        }
-        setPreview({ parsed, filename: file.name });
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      const name = file.name || "phone-upload.csv";
+      if (shouldSendToServer(name, file.type, bytes)) {
+        setPreview(await parseOnServer(file));
         return;
       }
-      const body = new FormData();
-      body.set("file", file);
-      const res = await fetch("/api/scorecard/parse", { method: "POST", body });
-      const json = (await res.json()) as { parsed?: ParseResult; error?: string; filename?: string };
-      if (!res.ok || !json.parsed) {
-        throw new Error(json.error ?? "Could not read that file.");
+      const text = decodeTextBuffer(buffer);
+      let parsed = parseScorecardText(text, name);
+      if (!hasParseableContent(parsed)) {
+        try {
+          setPreview(await parseOnServer(file));
+          return;
+        } catch {
+          throw new Error(
+            parsed.warnings[0]?.message ??
+              "That file was not understood. Export as CSV or Excel and pick it from Files (not a photo of the report)."
+          );
+        }
       }
-      setPreview({ parsed: json.parsed, filename: json.filename ?? file.name });
+      setPreview({ parsed, filename: name });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -83,7 +98,7 @@ export default function UploadScorecardPage() {
       <PageHeader
         eyebrow="Import"
         title="Upload CSV or PDF"
-        description="Drop the Hueytown workbook, a 15-minute report, a CEMS guest-experience file, or any SOS export. The parser reads sales, labor, OSAT attributes, drive-thru times, and interval boards — including Excel percent bugs like 8500% → 85 OSAT and 7:25 / 0:07:25 / decimal minutes."
+        description="From a phone: tap Choose file, open Files, and pick the export — not a photo. 15-minute and Daily Data are CSV/Excel; CEMS is usually a PDF. Each 15-minute sales row is added up to that day's total sales."
       />
 
       <div
@@ -103,29 +118,24 @@ export default function UploadScorecardPage() {
         }`}
       >
         <Upload className="h-10 w-10 text-cfa" />
-        <p className="mt-3 font-semibold text-slate-900">Drop a .csv, .pdf, or .txt here</p>
-        <p className="mt-1 text-sm text-slate-500">
-          Workbook PDFs, 15-minute, CEMS, Daily Data, monthly, goals, and standalone SOS files.
+        <p className="mt-3 font-semibold text-slate-900">Upload CSV, Excel, or PDF</p>
+        <p className="mt-1 max-w-md text-sm text-slate-500">
+          iPhone/Android: use <span className="font-semibold">Files</span> or your email Downloads — not
+          the camera. CSV, TSV, .xlsx, and PDF all work. 15-minute sales add up to the day.
         </p>
-        <button
-          type="button"
-          className="btn-primary mt-4 bg-cfa hover:bg-cfa-dark"
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-        >
-          {busy ? "Reading file…" : "Choose file"}
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv,.pdf,.txt,text/csv,text/plain,application/pdf"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void parseFile(file);
-            e.target.value = "";
-          }}
-        />
+        <label className={`btn-primary mt-4 bg-cfa hover:bg-cfa-dark ${busy ? "pointer-events-none opacity-70" : ""}`}>
+          {busy ? "Reading file…" : "Choose file from phone"}
+          <input
+            type="file"
+            className="sr-only"
+            accept=".csv,.tsv,.txt,.xls,.xlsx,.xlsm,.pdf,text/csv,text/tab-separated-values,text/plain,text/comma-separated-values,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf,*/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void parseFile(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -176,6 +186,23 @@ export default function UploadScorecardPage() {
                 <li key={warning.message}>{warning.message}</li>
               ))}
             </ul>
+          )}
+          {preview.parsed.intervals.length > 0 && preview.parsed.days.length > 0 && (
+            <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-slate-800">
+              <p className="font-semibold text-cfa">15-minute rows added up to the day</p>
+              <ul className="mt-2 space-y-1">
+                {preview.parsed.days
+                  .filter((d) => d.kind === "day")
+                  .slice(0, 6)
+                  .map((row) => (
+                    <li key={`sum-${row.date}`}>
+                      {row.dayOfWeek ? `${row.dayOfWeek} · ` : ""}
+                      {row.date}: {row.salesActual?.toLocaleString() ?? "—"} sales ·{" "}
+                      {row.transTy?.toLocaleString() ?? "—"} trans
+                    </li>
+                  ))}
+              </ul>
+            </div>
           )}
           {preview.parsed.days.length > 0 && (
             <div className="mt-4 overflow-x-auto">
@@ -234,14 +261,14 @@ export default function UploadScorecardPage() {
           icon={FileSpreadsheet}
           href={asDownload(INTERVAL_CSV_TEMPLATE)}
           filename="cfa-hueytown-15min.csv"
-          copy="Title plus Business Date and Time / Sales / Trans / SOS / Cars. Also accepts glued PDF text."
+          copy="Business Date plus Time Increment / Net Sales / Guest Count, or Time / Sales / Trans / SOS / Cars. Rows add up to the day's sales."
         />
         <TemplateCard
           title="CEMS CSV"
           icon={FileText}
           href={asDownload(CEMS_CSV_TEMPLATE)}
           filename="cfa-hueytown-cems.csv"
-          copy="Overall satisfaction plus Accuracy, Clean, Taste, Temp, Fast, Courteous, Portion Size."
+          copy="CEMS from the store is usually a PDF, not a spreadsheet. This CSV is optional. Overall satisfaction plus Accuracy, Clean, Taste, Temp, Fast, Courteous."
         />
         <TemplateCard
           title="Monthly P&L CSV"
