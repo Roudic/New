@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { parseCsvText } from "../src/lib/scorecard/parse-csv";
-import { parseCemsText } from "../src/lib/scorecard/parse-cems";
+import { CEMS_PDF_SAMPLE, parseCemsText } from "../src/lib/scorecard/parse-cems";
 import { parseIntervalText, rollupIntervals } from "../src/lib/scorecard/parse-interval";
 import { parseScorecardText } from "../src/lib/scorecard/parse";
 import { parseSosText } from "../src/lib/scorecard/parse-sos";
@@ -151,8 +151,40 @@ Accuracy 8500%
 
   const fromPdf = parseScorecardText(fixture, "CEMS-Hueytown.pdf");
   assert(fromPdf.kinds.includes("cems"), "CEMS PDF kind");
+  assert(!fromPdf.kinds.includes("daily"), "CEMS-only PDF is not Daily Data");
   close(fromPdf.days[0]?.osat, 69.4, "CEMS PDF OSAT");
   close(fromPdf.days[0]?.osatAccuracy, 94, "CEMS PDF accuracy");
+
+  const storePdf = parseCemsText(CEMS_PDF_SAMPLE, "pdf", "CEM-Hueytown.pdf");
+  assert(storePdf.days.length === 1, `CEM PDF days ${storePdf.days.length}`);
+  assert(storePdf.days[0].date === "2026-05-25", `CEM week ending ${storePdf.days[0].date}`);
+  close(storePdf.days[0].osat, 69.4, "CEM next-line OSAT");
+  close(storePdf.days[0].osatAccuracy, 94, "CEM order accuracy (not goal/n)");
+  close(storePdf.days[0].osatClean, 86.7, "CEM cleanliness");
+  close(storePdf.days[0].osatTaste, 82.6, "CEM food taste");
+  close(storePdf.days[0].osatTemp, 54.2, "CEM food temp");
+  close(storePdf.days[0].osatFast, 79.9, "CEM speed of service score");
+  close(storePdf.days[0].osatCourteous, 69.6, "CEM attentive/courteous");
+  close(storePdf.days[0].osatPortion, 88, "CEM portion");
+  assert(storePdf.location === "Chick-fil-A Hueytown", `CEM location ${storePdf.location}`);
+
+  const glued = parseScorecardText(
+    `CEMS Chick-fil-A Hueytown, AL Survey Date: 05/25/2026 OverallSatisfaction69.4%Accuracy94.0%Clean86.7%Taste82.6%`,
+    "document.pdf"
+  );
+  close(glued.days[0]?.osat, 69.4, "glued CEMS PDF OSAT");
+  close(glued.days[0]?.osatAccuracy, 94, "glued CEMS accuracy");
+
+  const monthOnly = parseCemsText(
+    `Customer Experience Monitor
+May 2026
+Overall Satisfaction 71.2%
+Order Accuracy 93%
+`,
+    "pdf"
+  );
+  assert(monthOnly.days[0]?.date === "2026-05-31", `month report date ${monthOnly.days[0]?.date}`);
+  close(monthOnly.days[0]?.osat, 71.2, "May CEMS OSAT");
   console.log("ok CEMS fixture");
 }
 

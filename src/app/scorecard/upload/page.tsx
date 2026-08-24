@@ -5,6 +5,7 @@ import { FileSpreadsheet, FileText, Upload } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { useScorecard } from "@/hooks/useScorecard";
 import { CEMS_CSV_TEMPLATE } from "@/lib/scorecard/parse-cems";
+import { OSAT_ATTRIBUTES } from "@/lib/scorecard/types";
 import {
   DAILY_CSV_TEMPLATE,
   GOALS_CSV_TEMPLATE,
@@ -98,7 +99,7 @@ export default function UploadScorecardPage() {
       <PageHeader
         eyebrow="Import"
         title="Upload CSV or PDF"
-        description="From a phone: tap Choose file, open Files, and pick the export — not a photo. 15-minute and Daily Data are CSV/Excel; CEMS is usually a PDF. Each 15-minute sales row is added up to that day's total sales."
+        description="From a phone: tap Choose file, open Files, and pick the export — not a photo. 15-minute and Daily Data are CSV/Excel. CEMS is a PDF from email or Pathway, not a spreadsheet. Each 15-minute sales row is added up to that day's total sales."
       />
 
       <div
@@ -120,8 +121,8 @@ export default function UploadScorecardPage() {
         <Upload className="h-10 w-10 text-cfa" />
         <p className="mt-3 font-semibold text-slate-900">Upload CSV, Excel, or PDF</p>
         <p className="mt-1 max-w-md text-sm text-slate-500">
-          iPhone/Android: use <span className="font-semibold">Files</span> or your email Downloads — not
-          the camera. CSV, TSV, .xlsx, and PDF all work. 15-minute sales add up to the day.
+          iPhone/Android: use <span className="font-semibold">Files</span> or email Downloads — not the
+          camera. Sales files are CSV/Excel. CEMS is the PDF report. 15-minute sales add up to the day.
         </p>
         <label className={`btn-primary mt-4 bg-cfa hover:bg-cfa-dark ${busy ? "pointer-events-none opacity-70" : ""}`}>
           {busy ? "Reading file…" : "Choose file from phone"}
@@ -186,6 +187,25 @@ export default function UploadScorecardPage() {
                 <li key={warning.message}>{warning.message}</li>
               ))}
             </ul>
+          )}
+          {preview.parsed.kinds.includes("cems") && preview.parsed.days.some((d) => d.osat != null) && (
+            <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-slate-800">
+              <p className="font-semibold text-cfa">CEMS PDF scores</p>
+              <ul className="mt-2 space-y-1">
+                {preview.parsed.days
+                  .filter((d) => d.origin === "cems" || d.osat != null)
+                  .slice(0, 4)
+                  .map((row) => (
+                    <li key={`cems-${row.date}`}>
+                      {row.date}: OSAT {formatScore(row.osat)}
+                      {OSAT_ATTRIBUTES.filter((attr) => attr.key !== "osat" && row[attr.key] != null)
+                        .slice(0, 4)
+                        .map((attr) => ` · ${attr.label} ${formatScore(row[attr.key] as number)}`)
+                        .join("")}
+                    </li>
+                  ))}
+              </ul>
+            </div>
           )}
           {preview.parsed.intervals.length > 0 && preview.parsed.days.length > 0 && (
             <div className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-slate-800">
@@ -268,7 +288,7 @@ export default function UploadScorecardPage() {
           icon={FileText}
           href={asDownload(CEMS_CSV_TEMPLATE)}
           filename="cfa-hueytown-cems.csv"
-          copy="CEMS from the store is usually a PDF, not a spreadsheet. This CSV is optional. Overall satisfaction plus Accuracy, Clean, Taste, Temp, Fast, Courteous."
+          copy="The store CEMS/CEM report is a PDF, not a spreadsheet. Upload that PDF. This CSV is only a fallback."
         />
         <TemplateCard
           title="Monthly P&L CSV"

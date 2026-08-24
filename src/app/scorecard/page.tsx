@@ -41,7 +41,7 @@ const BRANCHES = [
   {
     href: "/scorecard/cems",
     title: "CEMS / OSAT",
-    copy: "Overall satisfaction and guest attributes versus the 85 goal.",
+    copy: "CEMS PDF from the store: OSAT and guest attributes versus the 85 goal.",
     icon: Smile,
   },
   {

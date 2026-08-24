@@ -29,6 +29,16 @@ export async function POST(req: Request) {
     let parsed: ParseResult;
     if (isPdfBuffer(bytes) || lower.endsWith(".pdf") || file.type === "application/pdf") {
       const extracted = await pdf(buffer);
+      const readable = extracted.text.replace(/\s+/g, " ").trim();
+      if (readable.length < 30) {
+        return NextResponse.json(
+          {
+            error:
+              "That PDF has no readable text. CEMS is the original guest-experience report from email or Pathway — a photo saved as a PDF will not work.",
+          },
+          { status: 422 }
+        );
+      }
       parsed = parseScorecardText(extracted.text, filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
     } else if (isZipBuffer(bytes) || looksLikeSpreadsheetName(filename, file.type)) {
       const csv = workbookBufferToCsv(buffer);
@@ -41,7 +51,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "No scorecard rows were found. For phone uploads, send a CSV or Excel 15-minute / Daily Data / CEMS file — not a screenshot.",
+            "No scorecard rows were found. 15-minute and Daily Data are CSV/Excel. CEMS is a PDF from email or Pathway — not a spreadsheet, and not a screenshot.",
           parsed,
         },
         { status: 422 }
@@ -55,7 +65,7 @@ export async function POST(req: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Could not read that file. Try a CSV or Excel export from Files on your phone.",
+            : "Could not read that file. From a phone, pick the CSV/Excel or the CEMS PDF from Files — not a photo.",
       },
       { status: 400 }
     );
