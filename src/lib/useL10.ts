@@ -60,6 +60,7 @@ export function useL10() {
 
   const pendingSaves = useRef(new Map<string, L10Session>());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushLock = useRef(Promise.resolve());
   const sessionsRef = useRef<L10Session[]>([]);
   sessionsRef.current = sessions;
 
@@ -68,33 +69,44 @@ export function useL10() {
   }, []);
 
   const flushSaves = useCallback(async () => {
-    if (pendingSaves.current.size === 0) return;
-    const batch = Array.from(pendingSaves.current.entries());
-    pendingSaves.current.clear();
-    setSaveState("saving");
-    try {
-      if (isCloud) {
-        await Promise.all(
-          batch.map(([id, session]) =>
-            api<L10Session>(`/api/l10/${id}`, {
-              method: "PATCH",
-              body: JSON.stringify(session),
-            })
-          )
-        );
-      } else {
-        persistLocal(sessionsRef.current);
+    const run = async () => {
+      while (pendingSaves.current.size > 0) {
+        const batch = Array.from(pendingSaves.current.entries());
+        pendingSaves.current.clear();
+        setSaveState("saving");
+        try {
+          if (isCloud) {
+            await Promise.all(
+              batch.map(([id, session]) =>
+                api<L10Session>(`/api/l10/${id}`, {
+                  method: "PATCH",
+                  body: JSON.stringify(session),
+                })
+              )
+            );
+          } else {
+            persistLocal(sessionsRef.current);
+          }
+          setError(null);
+        } catch (err) {
+          for (const [id, session] of batch) {
+            if (!pendingSaves.current.has(id)) pendingSaves.current.set(id, session);
+          }
+          setSaveState("error");
+          setError(err instanceof Error ? err.message : "Could not save L10");
+          throw err;
+        }
       }
-      setSaveState("saved");
+      setSaveState((current) => (current === "error" ? current : "saved"));
       setLastSavedAt(new Date());
-      setError(null);
-    } catch (err) {
-      for (const [id, session] of batch) {
-        if (!pendingSaves.current.has(id)) pendingSaves.current.set(id, session);
-      }
-      setSaveState("error");
-      setError(err instanceof Error ? err.message : "Could not save L10");
-    }
+    };
+
+    const next = flushLock.current.then(run, run);
+    flushLock.current = next.then(
+      () => undefined,
+      () => undefined
+    );
+    return next;
   }, [isCloud, persistLocal]);
 
   const queueSave = useCallback(
@@ -145,10 +157,9 @@ export function useL10() {
         clearTimeout(saveTimer.current);
         saveTimer.current = null;
       }
-      await flushSaves();
-      if (pendingSaves.current.size > 0) {
-        throw new Error("Could not save the current session before creating a new one.");
-      }
+      do {
+        await flushSaves();
+      } while (pendingSaves.current.size > 0);
 
       const previous =
         input.copyFromPrevious === false
