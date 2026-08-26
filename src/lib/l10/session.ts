@@ -43,7 +43,7 @@ export function sessionTitle(date: Date): string {
 
 export function defaultMeetingTime(from = new Date()): Date {
   const scheduled = new Date(from);
-  scheduled.setHours(8, 0, 0, 0);
+  scheduled.setSeconds(0, 0);
   return scheduled;
 }
 
@@ -329,8 +329,11 @@ export function mostRecentPrevious(
   return (
     sessions
       .filter((session) => session.id !== exceptId)
-      .sort(
-        (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
-      )[0] ?? null
+      .sort((a, b) => {
+        const updated =
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        if (updated !== 0) return updated;
+        return new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime();
+      })[0] ?? null
   );
 }

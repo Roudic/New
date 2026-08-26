@@ -1,4 +1,4 @@
-import { createL10Session, meetingProgress, prepProgress } from "../src/lib/l10/session";
+import { createL10Session, meetingProgress, mostRecentPrevious, prepProgress } from "../src/lib/l10/session";
 import type { L10Session } from "../src/lib/l10/types";
 
 function assert(cond: unknown, message: string) {
@@ -91,5 +91,36 @@ assert(next.agenda.length === 7 && next.agenda.every((section) => !section.done)
 assert(prepProgress(previous).packed === 1, "prep packed count");
 assert(meetingProgress(previous).done === 1, "agenda done count");
 assert(next.title.startsWith("L10 ·"), `title ${next.title}`);
+
+const older = createL10Session({
+  id: "older",
+  scheduledAt: "2026-08-26T12:00:00.000Z",
+});
+older.updatedAt = "2026-08-26T12:00:00.000Z";
+older.rocks = [
+  {
+    id: "stale-rock",
+    title: "Stale rock",
+    owner: "Ops",
+    status: "on_track",
+    notes: "",
+  },
+];
+const newer = createL10Session({
+  id: "newer",
+  scheduledAt: "2026-08-26T12:00:00.000Z",
+});
+newer.updatedAt = "2026-08-26T18:00:00.000Z";
+newer.rocks = [
+  {
+    id: "fresh-rock",
+    title: "Carryforward labor rock",
+    owner: "Operator",
+    status: "on_track",
+    notes: "",
+  },
+];
+const picked = mostRecentPrevious([older, newer]);
+assert(picked?.id === "newer", `carry-forward should use last updated session, got ${picked?.id}`);
 
 console.log("l10 session factory ok");
