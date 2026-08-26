@@ -88,6 +88,18 @@ AI features require the cloud database plus `ANTHROPIC_API_KEY` in your environm
 (get one at [console.anthropic.com](https://console.anthropic.com)). Stats, streaks,
 and the journal itself work without it.
 
+## Level 10 Meetings (EOS)
+
+Weekly leadership L10 at [`/l10`](http://localhost:3000/l10).
+
+- **Sessions** — one dashboard per meeting, with status (prepping / ready / in meeting / wrapped)
+- **Prep** — bring list, talking points, when/where, and this month's scorecard numbers
+- **Meeting** — the 90-minute agenda (Segue, Scorecard, Rocks, Headlines, To-dos, IDS, Conclude)
+- **Follow-up** — meeting rating, cascade messages, open to-dos and unsolved issues
+- New sessions **carry forward** open to-dos, unsolved IDS issues, and unfinished rocks
+
+Works with the cloud database when you're signed in, or localStorage in offline demo mode.
+
 ## Chick-fil-A Hueytown Scorecard
 
 Operator scorecard at [`/scorecard`](http://localhost:3000/scorecard), seeded from the Hueytown workbook (May–June 2026).
@@ -106,3 +118,4 @@ Templates live in [`public/scorecard/`](./public/scorecard/). `npm run test:scor
 - 6 built-in templates (opening, closing, food safety, etc.)
 - Task types: checkbox, yes/no, temperature, text, photo, number
 - Hueytown scorecard hub with CSV/PDF import
+- EOS Level 10 meeting prep, session dashboard, and IDS follow-up

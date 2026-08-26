@@ -26,6 +26,7 @@ model User {
   invitesSent         TeamInvite[]        @relation("InvitedBy")
   notebooks           Notebook[]
   journalEntries      JournalEntry[]
+  l10Sessions         L10Session[]
 }
 
 model TeamInvite {
@@ -140,6 +141,23 @@ model JournalEntry {
 
   @@index([userId, updatedAt])
   @@index([notebookId])
+}
+
+model L10Session {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  scheduledAt DateTime
+  location    String   @default("")
+  status      String   @default("prep")
+  rating      Int?
+  payload     String   @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, scheduledAt])
 }
 
 model ScorecardStore {

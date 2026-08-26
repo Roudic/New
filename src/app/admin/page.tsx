@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import {
   AlertTriangle,
+  CalendarClock,
   CheckCircle2,
   ClipboardList,
   Gauge,
@@ -65,23 +66,42 @@ export default function AdminDashboardPage() {
         }
       />
 
-      <Link
-        href="/scorecard"
-        className="mb-8 flex items-center justify-between gap-4 rounded-2xl bg-cfa px-5 py-4 text-white shadow-card"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-            <Gauge className="h-5 w-5" />
+      <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        <Link
+          href="/l10"
+          className="flex items-center justify-between gap-4 rounded-2xl bg-cfa px-5 py-4 text-white shadow-card"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
+              <CalendarClock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">Level 10 Meetings</p>
+              <p className="text-xs text-white/80">
+                Prep the bag, run the 90-minute L10, keep rocks and IDS
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-bold">Chick-fil-A Hueytown Scorecard</p>
-            <p className="text-xs text-white/80">
-              Sales, labor, OSAT, drive-thru SOS, and CSV/PDF import
-            </p>
+          <span className="text-sm font-semibold">Open L10 →</span>
+        </Link>
+        <Link
+          href="/scorecard"
+          className="flex items-center justify-between gap-4 rounded-2xl bg-cfa-ink px-5 py-4 text-white shadow-card"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
+              <Gauge className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">Chick-fil-A Hueytown Scorecard</p>
+              <p className="text-xs text-white/80">
+                Sales, labor, OSAT, drive-thru SOS, and CSV/PDF import
+              </p>
+            </div>
           </div>
-        </div>
-        <span className="text-sm font-semibold">Open hub →</span>
-      </Link>
+          <span className="text-sm font-semibold">Open hub →</span>
+        </Link>
+      </div>
 
       <section className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Pending" value={stats.pending} icon={AlertTriangle} accent="amber" />
