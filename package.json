@@ -12,7 +12,8 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "test:scorecard": "tsx scripts/test-scorecard-parse.ts"
+    "test:scorecard": "tsx scripts/test-scorecard-parse.ts",
+    "test:l10": "tsx scripts/test-l10.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

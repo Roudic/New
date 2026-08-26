@@ -95,10 +95,15 @@ export default function ScorecardHubPage() {
             : "Upload a Daily Data CSV or the Hueytown workbook PDF to populate this hub."
         }
         action={
-          <Link href="/scorecard/upload" className="btn-primary bg-cfa hover:bg-cfa-dark">
-            <Upload className="h-4 w-4" />
-            Upload CSV / PDF
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/l10" className="btn-secondary">
+              L10 meeting
+            </Link>
+            <Link href="/scorecard/upload" className="btn-primary bg-cfa hover:bg-cfa-dark">
+              <Upload className="h-4 w-4" />
+              Upload CSV / PDF
+            </Link>
+          </div>
         }
       />
 
