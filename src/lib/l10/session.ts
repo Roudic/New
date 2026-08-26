@@ -49,7 +49,7 @@ export function defaultMeetingTime(from = new Date()): Date {
 
 function cloneOpenTodos(previous: L10Session): TodoItem[] {
   return previous.todos
-    .filter((todo) => todo.status === "open")
+    .filter((todo) => todo.status === "open" && todo.title.trim())
     .map((todo) => ({
       ...todo,
       id: generateId(),
@@ -59,7 +59,7 @@ function cloneOpenTodos(previous: L10Session): TodoItem[] {
 
 function cloneOpenIssues(previous: L10Session): Issue[] {
   return previous.issues
-    .filter((issue) => !issue.solved)
+    .filter((issue) => !issue.solved && issue.title.trim())
     .map((issue) => ({
       ...issue,
       id: generateId(),
@@ -69,7 +69,7 @@ function cloneOpenIssues(previous: L10Session): Issue[] {
 
 function cloneRocks(previous: L10Session): Rock[] {
   return previous.rocks
-    .filter((rock) => rock.status !== "done")
+    .filter((rock) => rock.status !== "done" && rock.title.trim())
     .map((rock) => ({
       ...rock,
       id: generateId(),

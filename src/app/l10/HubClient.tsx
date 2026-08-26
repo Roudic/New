@@ -44,6 +44,7 @@ export function HubClient() {
   const { hydrated, isLoggedIn } = useApp();
   const { sessions, loading, createSession, error } = useL10();
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -63,9 +64,12 @@ export function HubClient() {
 
   const startThisWeek = async () => {
     setCreating(true);
+    setCreateError(null);
     try {
       const session = await createSession({ copyFromPrevious: true });
       router.push(`/l10/${session.id}`);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Could not create an L10 session.");
     } finally {
       setCreating(false);
     }
@@ -98,9 +102,9 @@ export function HubClient() {
         }
       />
 
-      {error && (
+      {(error || createError) && (
         <p className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {error}
+          {createError ?? error}
         </p>
       )}
 

@@ -141,6 +141,15 @@ export function useL10() {
 
   const createSession = useCallback(
     async (input: CreateL10Input = {}) => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
+      await flushSaves();
+      if (pendingSaves.current.size > 0) {
+        throw new Error("Could not save the current session before creating a new one.");
+      }
+
       const previous =
         input.copyFromPrevious === false
           ? null
@@ -170,7 +179,7 @@ export function useL10() {
       setLastSavedAt(new Date());
       return local;
     },
-    [isCloud, persistLocal]
+    [flushSaves, isCloud, persistLocal]
   );
 
   const updateSession = useCallback(

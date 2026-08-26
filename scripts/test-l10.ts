@@ -27,22 +27,29 @@ function previousSession(): L10Session {
       notes: "Filled in July",
     },
   ];
-  session.todos = [
-    {
-      id: "todo-open",
-      title: "Walk the 4:00 SOS dip",
-      owner: "Director",
-      dueDate: "2026-08-21",
-      status: "open",
-    },
-    {
-      id: "todo-done",
-      title: "Send OSAT recap",
-      owner: "Operator",
-      dueDate: "2026-08-20",
-      status: "done",
-    },
-  ];
+session.todos = [
+  {
+    id: "todo-open",
+    title: "Walk the 4:00 SOS dip",
+    owner: "Director",
+    dueDate: "2026-08-21",
+    status: "open",
+  },
+  {
+    id: "todo-blank",
+    title: "   ",
+    owner: "",
+    dueDate: "",
+    status: "open",
+  },
+  {
+    id: "todo-done",
+    title: "Send OSAT recap",
+    owner: "Operator",
+    dueDate: "2026-08-20",
+    status: "done",
+  },
+];
   session.issues = [
     {
       id: "issue-open",
