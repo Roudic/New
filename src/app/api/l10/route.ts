@@ -3,7 +3,7 @@ import { requireUser } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 import { ensureL10Tables } from "@/lib/l10/db";
 import { serializeSession } from "@/lib/l10/serialize";
-import { createL10Session, mostRecentPrevious, toPayload } from "@/lib/l10/session";
+import { createL10Session, hydrateClientSession, mostRecentPrevious, toPayload } from "@/lib/l10/session";
 import type { CreateL10Input, L10Session } from "@/lib/l10/types";
 
 export const dynamic = "force-dynamic";
@@ -34,12 +34,14 @@ export async function POST(request: Request) {
   const copyFromPrevious = body.copyFromPrevious !== false;
   const existing = await listSessions(auth.user.id);
   const previous = copyFromPrevious ? mostRecentPrevious(existing) : null;
-  const session = createL10Session({
-    title: body.title,
-    scheduledAt: body.scheduledAt,
-    location: body.location,
-    previous,
-  });
+  const session = body.session
+    ? hydrateClientSession(body.session)
+    : createL10Session({
+        title: body.title,
+        scheduledAt: body.scheduledAt,
+        location: body.location,
+        previous,
+      });
 
   const row = await prisma.l10Session.create({
     data: {

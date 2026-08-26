@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useApp } from "@/context/AppContext";
 import {
   applyDraft,
@@ -48,7 +57,7 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function useL10() {
+export function useL10Store() {
   const { storageMode, isLoggedIn, hydrated } = useApp();
   const isCloud = storageMode === "cloud" && isLoggedIn;
 
@@ -148,8 +157,9 @@ export function useL10() {
   useEffect(() => {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      void flushSaves();
     };
-  }, []);
+  }, [flushSaves]);
 
   const createSession = useCallback(
     async (input: CreateL10Input = {}) => {
@@ -175,7 +185,7 @@ export function useL10() {
       if (isCloud) {
         const created = await api<L10Session>("/api/l10", {
           method: "POST",
-          body: JSON.stringify(input),
+          body: JSON.stringify({ ...input, session: local }),
         });
         setSessions((current) => [created, ...current.filter((s) => s.id !== created.id)]);
         return created;
@@ -251,4 +261,19 @@ export function useL10() {
       updateSession,
     ]
   );
+}
+
+const L10Context = createContext<ReturnType<typeof useL10Store> | null>(null);
+
+export function L10Provider({ children }: { children: ReactNode }) {
+  const value = useL10Store();
+  return <L10Context.Provider value={value}>{children}</L10Context.Provider>;
+}
+
+export function useL10() {
+  const value = useContext(L10Context);
+  if (!value) {
+    throw new Error("useL10 must be used within L10Provider");
+  }
+  return value;
 }

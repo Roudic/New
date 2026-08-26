@@ -112,6 +112,28 @@ export function createL10Session(input?: {
   };
 }
 
+export function hydrateClientSession(raw: L10Session): L10Session {
+  const scheduled = new Date(raw.scheduledAt);
+  const scheduledAt = Number.isNaN(scheduled.getTime())
+    ? defaultMeetingTime().toISOString()
+    : scheduled.toISOString();
+  const payload = parsePayload(JSON.stringify(toPayload(raw)));
+  const now = new Date().toISOString();
+  return {
+    id: raw.id?.trim() || generateId(),
+    title: raw.title?.trim() || sessionTitle(new Date(scheduledAt)),
+    scheduledAt,
+    location: typeof raw.location === "string" ? raw.location : "",
+    status: isL10Status(raw.status) ? raw.status : "prep",
+    rating:
+      typeof raw.rating === "number" && raw.rating >= 1 && raw.rating <= 10 ? raw.rating : null,
+    ...payload,
+    createdAt:
+      raw.createdAt && !Number.isNaN(Date.parse(raw.createdAt)) ? raw.createdAt : now,
+    updatedAt: now,
+  };
+}
+
 export function toPayload(session: Pick<L10Session, keyof L10Payload>): L10Payload {
   return {
     cascade: session.cascade,

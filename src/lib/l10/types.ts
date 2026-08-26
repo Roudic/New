@@ -115,4 +115,5 @@ export interface CreateL10Input {
   scheduledAt?: string;
   location?: string;
   copyFromPrevious?: boolean;
+  session?: L10Session;
 }
