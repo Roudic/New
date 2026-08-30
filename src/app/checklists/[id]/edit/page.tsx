@@ -49,6 +49,7 @@ export default function EditChecklistPage({
       <PageHeader
         eyebrow="Checklist Builder"
         title={`Edit ${template.name}`}
+        description="Change a title in place, or type a new task and press Enter."
         backHref={`/checklists/${template.id}`}
         backLabel="Checklist details"
       />
