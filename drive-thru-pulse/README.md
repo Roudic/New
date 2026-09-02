@@ -1,47 +1,48 @@
-# Drive-Thru Pulse
+# Depart Rate
 
-Tap-timer app for measuring drive-thru **window speed of service** and car counts at Chick-fil-A Vestavia Hills (#03339).
+Standalone speed-of-service app for the drive-thru leader. Not part of KitchenCheck.
+
+Tap every car that leaves the window. A countdown tells the leader **when to pull** the next car so the line holds the target depart rate.
 
 ## Quick start
 
 ```bash
+cd drive-thru-pulse
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173 on an iPad or phone at the drive-thru window.
+Open http://localhost:5173 on a phone or iPad at the window.
 
 ## Deployed URL
 
-When deployed via the root Vercel project (JoltCheck), Pulse is served at **`/pulse/`** on the same domain:
+When the root JoltCheck project is deployed, this app is a separate SPA at **`/pulse/`**:
 
 ```
 https://your-app.vercel.app/pulse/
 ```
 
-The root `npm run build` bundles Pulse into `public/pulse/` automatically.
+No login. Works offline after first load.
 
-## Build
+## How to run a session
 
-```bash
-npm run build
-```
-
-Static files output to `dist/` — deploy anywhere or open locally.
+1. Pick daypart, lane (single/double), and a **depart-rate target** (140 / 150 / 160 / 180 CPH).
+2. Start the session. The pull clock counts down from the pace interval (160 CPH = 22.5 seconds).
+3. When the clock hits **PULL**, send the next car.
+4. Tap **Car departed** when they leave — that logs the car, updates depart rate, and resets the pull clock.
+5. End the session for cars, CPH vs target, 15-minute blocks, and gap stalls.
 
 ## Features
 
-- **Live session** — tap **Car at window**, tap **Car departed**; live SOS timer with instant feedback
-- **Speed of service** — average / fastest / slowest window time, cars under the 25s goal
-- **Rolling CPH** — 10-minute window pace indicator (green ≥160, yellow 150–159, red <150)
-- **Car counts** — session total plus 15-minute block bar chart
-- **Flags** — one-tap tagging for pull-forward lag, payment delay, etc.
-- **Session report** — SOS stats, gap analysis, stall events
-- **Export** — CSV download and Slack-ready summary copy
-- **Offline** — localStorage persistence, autosave on every tap, resume after crash
+- **Pull timer** — countdown to the next pull; turns red and beeps when it's time
+- **Depart rate** — rolling cars/hour vs the target you set
+- **Car counts** — session total plus 15-minute blocks
+- **Flags** — pull-forward lag, payment delay, order not ready, lane blocked
+- **Export** — CSV and a copy-paste summary
+- **Offline** — localStorage, autosave, resume after crash
 
 ## Tech
 
 - Vite + React (TypeScript)
 - Tailwind CSS
-- No backend, no login — works fully offline after first load
+- No backend, no login

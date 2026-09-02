@@ -45,12 +45,6 @@ const BRANCHES = [
     icon: Smile,
   },
   {
-    href: "/timer",
-    title: "Window Timer",
-    copy: "Live tap-timer at the window: speed of service, car counts, and CPH.",
-    icon: Timer,
-  },
-  {
     href: "/scorecard/drive-thru",
     title: "Drive-Thru SOS",
     copy: "Breakfast, lunch, afternoon, and dinner speed versus the 5:00 goal.",

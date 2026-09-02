@@ -1,10 +1,10 @@
 import { useState } from "react";
 import type { Daypart, LaneConfig, Session } from "../types";
-import { STORE_NUMBER } from "../types";
+import { STORE_NUMBER, TARGET_CPH, TARGET_CPH_OPTIONS } from "../types";
 import { SessionCard } from "../components/SessionCard";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { getActiveSession } from "../lib/storage";
-import { formatDaypartLabel } from "../lib/calculations";
+import { formatDaypartLabel, targetGapSeconds } from "../lib/calculations";
 
 interface HomeScreenProps {
   sessions: Session[];
@@ -12,6 +12,7 @@ interface HomeScreenProps {
     daypart: Daypart;
     laneConfig: LaneConfig;
     note: string;
+    targetCph: number;
   }) => void;
   onOpenReport: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
@@ -25,8 +26,9 @@ export function HomeScreen({
   onDeleteSession,
   onResumeSession,
 }: HomeScreenProps) {
-  const [daypart, setDaypart] = useState<Daypart>("breakfast");
+  const [daypart, setDaypart] = useState<Daypart>(guessDaypart());
   const [laneConfig, setLaneConfig] = useState<LaneConfig>("double");
+  const [targetCph, setTargetCph] = useState<number>(TARGET_CPH);
   const [note, setNote] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -39,11 +41,11 @@ export function HomeScreen({
     <div className="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 py-8">
       <header className="mb-8 text-center">
         <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-          Drive-Thru Pulse
+          Depart Rate
         </h1>
         <p className="mt-1 text-lg font-medium text-cfa-red">{STORE_NUMBER}</p>
         <p className="mt-2 text-sm text-zinc-500">
-          Vestavia Hills · Window speed of service
+          Speed of service · Pull timer for the drive-thru leader
         </p>
       </header>
 
@@ -52,7 +54,7 @@ export function HomeScreen({
           <p className="font-semibold text-white">Session in progress</p>
           <p className="mt-1 text-sm text-zinc-400">
             {formatDaypartLabel(activeSession.daypart)} ·{" "}
-            {activeSession.departures.length} cars logged
+            {activeSession.departures.length} cars · {activeSession.targetCph} CPH target
           </p>
           <button
             type="button"
@@ -111,6 +113,31 @@ export function HomeScreen({
           </div>
 
           <div>
+            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              Depart-rate target
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {TARGET_CPH_OPTIONS.map((cph) => (
+                <button
+                  key={cph}
+                  type="button"
+                  onClick={() => setTargetCph(cph)}
+                  className={`rounded-xl py-3 text-sm font-semibold ${
+                    targetCph === cph
+                      ? "bg-cfa-red text-white"
+                      : "bg-zinc-800 text-zinc-400"
+                  }`}
+                >
+                  {cph}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-zinc-500">
+              {targetCph} CPH · pull every {targetGapSeconds(targetCph).toFixed(1)}s
+            </p>
+          </div>
+
+          <div>
             <label
               htmlFor="note"
               className="mb-2 block text-xs font-semibold uppercase tracking-wider text-zinc-500"
@@ -122,14 +149,14 @@ export function HomeScreen({
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder='e.g. "Cordell on window"'
+              placeholder='e.g. "Cordell leading DT"'
               className="w-full rounded-xl bg-zinc-800 px-4 py-3 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-cfa-red/50"
             />
           </div>
 
           <button
             type="button"
-            onClick={() => onStartSession({ daypart, laneConfig, note })}
+            onClick={() => onStartSession({ daypart, laneConfig, note, targetCph })}
             className="w-full rounded-2xl bg-cfa-red py-5 text-xl font-black tracking-wide text-white shadow-lg shadow-cfa-red/20 active:scale-[0.98] active:bg-cfa-red-dark"
           >
             START SESSION
@@ -169,4 +196,12 @@ export function HomeScreen({
       )}
     </div>
   );
+}
+
+function guessDaypart(): Daypart {
+  const hour = new Date().getHours();
+  if (hour < 10) return "breakfast";
+  if (hour < 14) return "lunch";
+  if (hour < 17) return "afternoon";
+  return "dinner";
 }

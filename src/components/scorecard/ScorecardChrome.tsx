@@ -23,7 +23,6 @@ const LINKS = [
   { href: "/scorecard/daily", label: "Daily", icon: CalendarDays },
   { href: "/scorecard/intervals", label: "15-Minute", icon: Clock },
   { href: "/scorecard/cems", label: "CEMS", icon: Smile },
-  { href: "/timer", label: "Timer", icon: Timer, exact: true },
   { href: "/scorecard/drive-thru", label: "Drive-Thru", icon: Timer },
   { href: "/scorecard/monthly", label: "Monthly", icon: CalendarRange },
   { href: "/scorecard/quarterly", label: "Quarterly", icon: Layers },

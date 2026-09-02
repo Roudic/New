@@ -1,41 +1,28 @@
 import type { Session } from "../types";
 import {
   computeGapStats,
-  computeWindowStats,
   formatBlockRange,
   formatDaypartLabel,
   formatDuration,
-  formatWindowTime,
   getBestWorstBlocks,
   getFifteenMinBlocks,
   overallCph,
-  windowSeconds,
+  targetGapSeconds,
 } from "./calculations";
 
 export function exportSessionCsv(session: Session): void {
   const date = new Date(session.startedAt);
   const dateStr = date.toISOString().slice(0, 10);
-  const filename = `pulse_${dateStr}_${session.daypart}.csv`;
+  const filename = `depart_rate_${dateStr}_${session.daypart}.csv`;
 
   const lines: string[] = [];
-
-  lines.push("=== CARS ===");
-  lines.push("car,arrived,departed,window_seconds,gap_seconds");
-  const departed = session.cars.filter((c) => c.departedAt != null);
-  departed.forEach((car, i) => {
-    const arrived = car.arrivedAt
-      ? new Date(car.arrivedAt).toLocaleTimeString([], { hour12: false })
-      : "";
-    const departedAt = new Date(car.departedAt!).toLocaleTimeString([], { hour12: false });
-    const windowSec = windowSeconds(car);
-    const prev = departed[i - 1];
+  lines.push("=== DEPARTURES ===");
+  lines.push("car,timestamp,time,gap_seconds");
+  session.departures.forEach((ts, i) => {
     const gap =
-      prev?.departedAt != null
-        ? ((car.departedAt! - prev.departedAt) / 1000).toFixed(1)
-        : "";
-    lines.push(
-      `${i + 1},${arrived},${departedAt},${windowSec != null ? windowSec.toFixed(1) : ""},${gap}`,
-    );
+      i === 0 ? "" : ((ts - session.departures[i - 1]) / 1000).toFixed(1);
+    const time = new Date(ts).toLocaleTimeString([], { hour12: false });
+    lines.push(`${i + 1},${ts},${time},${gap}`);
   });
 
   lines.push("");
@@ -65,7 +52,8 @@ export function buildSummaryText(session: Session): string {
     endedAt,
   );
   const { best, worst } = getBestWorstBlocks(blocks);
-  const gapStats = computeGapStats(session.departures);
+  const gapTarget = targetGapSeconds(session.targetCph);
+  const gapStats = computeGapStats(session.departures, gapTarget);
 
   const flagCounts = new Map<string, number>();
   session.flags.forEach((f) => {
@@ -83,20 +71,11 @@ export function buildSummaryText(session: Session): string {
   const dayLabel = formatDateShort(session.startedAt);
   const daypart = formatDaypartLabel(session.daypart);
 
-  const windowStats = computeWindowStats(session);
-  const avgSos =
-    windowStats.averageSec != null ? formatWindowTime(windowStats.averageSec, "sec") : "—";
-
   const lines = [
-    `🚗 Drive-Thru Pulse — ${daypart} ${dayLabel}`,
-    `Cars: ${session.departures.length} | Avg SOS: ${avgSos} | Duration: ${formatDuration(duration)} | CPH: ${Math.round(cph)}`,
+    `🚗 Depart Rate — ${daypart} ${dayLabel}`,
+    `Cars: ${session.departures.length} | Depart: ${Math.round(cph)} CPH | Target: ${session.targetCph} | ${formatDuration(duration)}`,
+    `Avg gap: ${gapStats.averageGap != null ? `${gapStats.averageGap.toFixed(1)}s` : "—"} (pace ${gapTarget.toFixed(1)}s)`,
   ];
-
-  if (windowStats.timedCars > 0) {
-    lines.push(
-      `Window: ${windowStats.underTarget}/${windowStats.timedCars} under 25s · slowest ${formatWindowTime(windowStats.slowestSec ?? 0, "sec")}`,
-    );
-  }
 
   if (best) {
     lines.push(

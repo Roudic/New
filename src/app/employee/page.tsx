@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import { ArrowRight, Calendar, ClipboardList, Timer, User } from "lucide-react";
+import { ArrowRight, Calendar, ClipboardList, User } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AssignmentStatusBadge } from "@/components/AssignmentStatusBadge";
 import { PageHeader } from "@/components/PageHeader";
@@ -43,24 +43,6 @@ export default function EmployeeDashboardPage() {
         title={`Welcome, ${settings.employeeName}`}
         description="Your assigned kitchen audits and compliance checklists."
       />
-
-      <Link
-        href="/timer"
-        className="mb-8 flex items-center justify-between gap-4 rounded-2xl bg-zinc-950 px-5 py-4 text-white shadow-card"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
-            <Timer className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-bold">Window Timer</p>
-            <p className="text-xs text-white/70">
-              Tap car at window, tap again when they leave — SOS, cars, CPH
-            </p>
-          </div>
-        </div>
-        <span className="text-sm font-semibold">Start timing →</span>
-      </Link>
 
       {active.length > 0 && (
         <section className="mb-8">

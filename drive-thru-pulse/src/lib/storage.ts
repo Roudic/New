@@ -1,9 +1,22 @@
-import type { Car, Session } from "../types";
+import type { Session } from "../types";
+import { TARGET_CPH } from "../types";
 
 const STORAGE_KEY = "dtp_sessions";
 
-interface LegacySession extends Omit<Session, "cars" | "departures" | "flags"> {
-  cars?: Car[];
+interface LegacyCar {
+  arrivedAt?: number | null;
+  departedAt?: number | null;
+}
+
+interface LegacySession {
+  id?: string;
+  daypart?: Session["daypart"];
+  laneConfig?: Session["laneConfig"];
+  note?: string;
+  targetCph?: number;
+  startedAt?: number;
+  endedAt?: number | null;
+  cars?: LegacyCar[];
   departures?: number[];
   flags?: Session["flags"];
 }
@@ -13,30 +26,23 @@ function migrateSession(raw: LegacySession): Session | null {
     return null;
   }
 
-  let cars: Car[] = Array.isArray(raw.cars) ? raw.cars : [];
-  const departures = Array.isArray(raw.departures) ? raw.departures : [];
-  if (cars.length === 0 && departures.length > 0) {
-    cars = departures.map((ts, i) => ({
-      id: `legacy-${raw.id}-${i}`,
-      arrivedAt: null,
-      departedAt: ts,
-    }));
+  let departures = Array.isArray(raw.departures) ? raw.departures.filter((n) => typeof n === "number") : [];
+  if (departures.length === 0 && Array.isArray(raw.cars)) {
+    departures = raw.cars
+      .map((c) => c.departedAt)
+      .filter((n): n is number => typeof n === "number")
+      .sort((a, b) => a - b);
   }
-
-  const synced = cars
-    .filter((c): c is Car & { departedAt: number } => c.departedAt != null)
-    .map((c) => c.departedAt)
-    .sort((a, b) => a - b);
 
   return {
     id: raw.id,
     daypart: raw.daypart ?? "lunch",
     laneConfig: raw.laneConfig ?? "double",
     note: raw.note ?? "",
+    targetCph: raw.targetCph && raw.targetCph > 0 ? raw.targetCph : TARGET_CPH,
     startedAt: raw.startedAt,
     endedAt: raw.endedAt ?? null,
-    cars,
-    departures: synced,
+    departures,
     flags: Array.isArray(raw.flags) ? raw.flags : [],
   };
 }

@@ -6,21 +6,14 @@ export interface Flag {
   reason: string;
 }
 
-export interface Car {
-  id: string;
-  arrivedAt: number | null;
-  departedAt: number | null;
-}
-
 export interface Session {
   id: string;
   daypart: Daypart;
   laneConfig: LaneConfig;
   note: string;
+  targetCph: number;
   startedAt: number;
   endedAt: number | null;
-  cars: Car[];
-  /** Kept in sync with departed cars for older session files. */
   departures: number[];
   flags: Flag[];
 }
@@ -38,8 +31,8 @@ export const FLAG_REASONS = [
 export const STORE_NUMBER = "#03339";
 
 export const TARGET_CPH = 160;
+export const TARGET_CPH_OPTIONS = [140, 150, 160, 180] as const;
 export const TARGET_GAP_SECONDS = 22.5;
 export const STALL_THRESHOLD_SECONDS = 45;
-export const TARGET_WINDOW_SECONDS = 25;
 export const BLOCK_MINUTES = 15;
 export const BLOCK_TARGET_CARS = 40;

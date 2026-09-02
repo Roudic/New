@@ -10,7 +10,6 @@ import {
   saveSessions,
   upsertSession,
 } from "./lib/storage";
-import { currentCar, syncDepartures } from "./lib/calculations";
 
 function App() {
   const [sessions, setSessions] = useState<Session[]>(() => loadSessions());
@@ -30,15 +29,20 @@ function App() {
     : null;
 
   const handleStartSession = useCallback(
-    (opts: { daypart: Daypart; laneConfig: LaneConfig; note: string }) => {
+    (opts: {
+      daypart: Daypart;
+      laneConfig: LaneConfig;
+      note: string;
+      targetCph: number;
+    }) => {
       const session: Session = {
         id: crypto.randomUUID(),
         daypart: opts.daypart,
         laneConfig: opts.laneConfig,
         note: opts.note,
+        targetCph: opts.targetCph,
         startedAt: Date.now(),
         endedAt: null,
-        cars: [],
         departures: [],
         flags: [],
       };
@@ -62,18 +66,7 @@ function App() {
     setSessions((prev) => {
       const session = getSessionById(prev, activeSessionId);
       if (!session) return prev;
-      const now = Date.now();
-      const hanging = currentCar(session);
-      const cars = hanging
-        ? session.cars.map((c) => (c.id === hanging.id ? { ...c, departedAt: now } : c))
-        : session.cars;
-      const ended: Session = {
-        ...session,
-        cars,
-        departures: syncDepartures({ ...session, cars }),
-        endedAt: now,
-      };
-      return upsertSession(prev, ended);
+      return upsertSession(prev, { ...session, endedAt: Date.now() });
     });
     setReportSessionId(activeSessionId);
     setActiveSessionId(null);

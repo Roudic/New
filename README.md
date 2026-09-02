@@ -2,7 +2,7 @@
 
 Operations checklist app for teams — login, admin assignments, checklist builder, and progress tracking.
 
-> **Also in this repo:** [Drive-Thru Pulse](./drive-thru-pulse/) — a tap-timer app for measuring drive-thru window departure timing at CFA #03339. See [`drive-thru-pulse/README.md`](./drive-thru-pulse/README.md) for setup.
+> **Also in this repo:** [Depart Rate](./drive-thru-pulse/) — a standalone drive-thru speed-of-service app (pull timer + depart rate). Open [`/pulse/`](http://localhost:3000/pulse/) or run `npm run dev:pulse`. It is not part of KitchenCheck.
 
 The app **automatically uses a cloud database** when `DATABASE_URL` is configured (Turso on Vercel, SQLite locally). Without a database, it falls back to **localStorage demo mode** on that device.
 
@@ -97,16 +97,6 @@ Operator scorecard at [`/scorecard`](http://localhost:3000/scorecard), seeded fr
 - **Upload** — CSV or the workbook PDF. The parser maps Daily Data columns, monthly P&L overlays, and the Goals tab. Excel percent bugs (`8500%` OSAT → `85`) and glued PDF cells (`$7,99419.90%`) are normalized.
 
 Templates live in [`public/scorecard/`](./public/scorecard/). `npm run test:scorecard` checks the PDF/CSV parser against the Hueytown workbook.
-
-## Drive-Thru Window Timer
-
-Live tap-timer at [`/timer`](http://localhost:3000/timer) for the person on the window:
-
-- Tap **Car at window** when they pull up, tap **Car departed** when they leave
-- Live window time (speed of service), car count, rolling CPH, and 15-minute blocks
-- Session report with average / fastest / slowest SOS, stall gaps, flags, CSV export
-
-The standalone Pulse app at [`/pulse/`](./drive-thru-pulse/) uses the same window-timing flow.
 
 ## Features
 
