@@ -11,6 +11,7 @@ import {
   NotebookPen,
   Plus,
   Settings,
+  Timer,
   Users,
 } from "lucide-react";
 import { useApp } from "@/context/AppContext";
@@ -21,19 +22,26 @@ export function NavBar() {
   const { settings, logout } = useApp();
   const isAdmin = settings.role === "ADMIN";
 
-  const navItems = isAdmin
+  const navItems: Array<{
+    href: string;
+    label: string;
+    icon: typeof LayoutDashboard;
+    hideMobile?: boolean;
+  }> = isAdmin
     ? [
         { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/timer", label: "Timer", icon: Timer },
         { href: "/scorecard", label: "Scorecard", icon: Gauge },
-        { href: "/admin/assignments", label: "Assignments", icon: ListChecks },
+        { href: "/admin/assignments", label: "Assignments", icon: ListChecks, hideMobile: true },
         { href: "/admin/team", label: "Team", icon: Users },
         { href: "/checklists", label: "Audits", icon: ClipboardList },
-        { href: "/journal", label: "Journal", icon: NotebookPen },
+        { href: "/journal", label: "Journal", icon: NotebookPen, hideMobile: true },
       ]
     : [
         { href: "/employee", label: "My Tasks", icon: LayoutDashboard },
+        { href: "/timer", label: "Timer", icon: Timer },
         { href: "/scorecard", label: "Scorecard", icon: Gauge },
-        { href: "/journal", label: "Journal", icon: NotebookPen },
+        { href: "/journal", label: "Journal", icon: NotebookPen, hideMobile: true },
         { href: "/history", label: "History", icon: ClipboardList },
         { href: "/settings", label: "Settings", icon: Settings },
       ];
@@ -98,7 +106,10 @@ export function NavBar() {
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-around px-1 py-1">
-          {navItems.slice(0, 5).map(({ href, label, icon: Icon }) => {
+          {navItems
+            .filter((item) => !item.hideMobile)
+            .slice(0, 5)
+            .map(({ href, label, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(`${href}/`);
             return (
               <Link

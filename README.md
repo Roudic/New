@@ -98,6 +98,16 @@ Operator scorecard at [`/scorecard`](http://localhost:3000/scorecard), seeded fr
 
 Templates live in [`public/scorecard/`](./public/scorecard/). `npm run test:scorecard` checks the PDF/CSV parser against the Hueytown workbook.
 
+## Drive-Thru Window Timer
+
+Live tap-timer at [`/timer`](http://localhost:3000/timer) for the person on the window:
+
+- Tap **Car at window** when they pull up, tap **Car departed** when they leave
+- Live window time (speed of service), car count, rolling CPH, and 15-minute blocks
+- Session report with average / fastest / slowest SOS, stall gaps, flags, CSV export
+
+The standalone Pulse app at [`/pulse/`](./drive-thru-pulse/) uses the same window-timing flow.
+
 ## Features
 
 - Admin dashboard with team progress

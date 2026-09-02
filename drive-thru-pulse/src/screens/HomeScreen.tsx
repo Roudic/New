@@ -43,7 +43,7 @@ export function HomeScreen({
         </h1>
         <p className="mt-1 text-lg font-medium text-cfa-red">{STORE_NUMBER}</p>
         <p className="mt-2 text-sm text-zinc-500">
-          Vestavia Hills · Window departure timing
+          Vestavia Hills · Window speed of service
         </p>
       </header>
 
@@ -71,18 +71,18 @@ export function HomeScreen({
               Daypart
             </label>
             <div className="flex gap-2">
-              {(["breakfast", "lunch", "dinner"] as Daypart[]).map((d) => (
+              {(["breakfast", "lunch", "afternoon", "dinner"] as Daypart[]).map((d) => (
                 <button
                   key={d}
                   type="button"
                   onClick={() => setDaypart(d)}
-                  className={`flex-1 rounded-xl py-3 text-sm font-semibold capitalize ${
+                  className={`flex-1 rounded-xl py-3 text-xs font-semibold capitalize sm:text-sm ${
                     daypart === d
                       ? "bg-cfa-red text-white"
                       : "bg-zinc-800 text-zinc-400"
                   }`}
                 >
-                  {d}
+                  {d === "afternoon" ? "Aft" : d.slice(0, 3)}
                 </button>
               ))}
             </div>

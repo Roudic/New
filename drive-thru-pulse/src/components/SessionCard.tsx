@@ -1,7 +1,9 @@
 import type { Session } from "../types";
 import {
+  computeWindowStats,
   formatDaypartLabel,
   formatDuration,
+  formatWindowTime,
   overallCph,
 } from "../lib/calculations";
 
@@ -15,6 +17,7 @@ export function SessionCard({ session, onOpen, onDelete }: SessionCardProps) {
   const endedAt = session.endedAt ?? Date.now();
   const duration = endedAt - session.startedAt;
   const cph = overallCph(session.departures.length, duration);
+  const sos = computeWindowStats(session);
   const date = new Date(session.startedAt);
   const dateStr = date.toLocaleDateString([], {
     month: "short",
@@ -70,6 +73,9 @@ export function SessionCard({ session, onOpen, onDelete }: SessionCardProps) {
       </div>
       <div className="mt-2 flex gap-4 text-xs text-zinc-400">
         <span>{formatDuration(duration)}</span>
+        <span>
+          SOS {sos.averageSec != null ? formatWindowTime(sos.averageSec, "sec") : "—"}
+        </span>
         <span>{Math.round(cph)} CPH</span>
         {session.endedAt === null && (
           <span className="font-semibold text-cfa-red">Active</span>

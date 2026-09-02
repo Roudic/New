@@ -1,21 +1,24 @@
+"use client";
+
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Session } from "../types";
-import { PaceIndicator } from "../components/PaceIndicator";
-import { FlagPicker } from "../components/FlagPicker";
-import { ConfirmDialog } from "../components/ConfirmDialog";
+import type { Session } from "@/lib/drive-thru/types";
+import { PaceBar } from "./PaceBar";
+import { FlagPicker } from "./FlagPicker";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { useWakeLock } from "@/hooks/useWakeLock";
 import {
   avgGapLastN,
+  carCount,
   computeWindowStats,
   currentCar,
+  departureTimes,
   formatDuration,
   formatWindowTime,
   rollingCph,
   sosBand,
-  syncDepartures,
-} from "../lib/calculations";
-import { useWakeLock } from "../hooks/useWakeLock";
+} from "@/lib/drive-thru/calculations";
 
-interface LiveSessionScreenProps {
+interface TimerLiveProps {
   session: Session;
   onUpdate: (session: Session) => void;
   onEnd: () => void;
@@ -29,16 +32,7 @@ const BAND_COLORS = {
   na: "#a1a1aa",
 };
 
-function withSyncedDepartures(session: Session): Session {
-  return { ...session, departures: syncDepartures(session) };
-}
-
-export function LiveSessionScreen({
-  session,
-  onUpdate,
-  onEnd,
-  onBack,
-}: LiveSessionScreenProps) {
+export function TimerLive({ session, onUpdate, onEnd, onBack }: TimerLiveProps) {
   const [now, setNow] = useState(Date.now());
   const [tapping, setTapping] = useState(false);
   const [showFlagPicker, setShowFlagPicker] = useState(false);
@@ -51,21 +45,17 @@ export function LiveSessionScreen({
   const atWindow = currentCar(session);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), atWindow ? 100 : 1000);
+    const ms = atWindow ? 100 : 1000;
+    const id = setInterval(() => setNow(Date.now()), ms);
     return () => clearInterval(id);
   }, [atWindow]);
 
   const persist = useCallback(
     (updated: Session) => {
-      onUpdate(withSyncedDepartures(updated));
+      onUpdate(updated);
     },
-    [onUpdate],
+    [onUpdate]
   );
-
-  const flash = () => {
-    setTapping(true);
-    setTimeout(() => setTapping(false), 150);
-  };
 
   const handleArrive = useCallback(() => {
     const current = sessionRef.current;
@@ -87,7 +77,7 @@ export function LiveSessionScreen({
     persist({
       ...current,
       cars: current.cars.map((c) =>
-        c.id === car.id ? { ...c, departedAt: Date.now() } : c,
+        c.id === car.id ? { ...c, departedAt: Date.now() } : c
       ),
     });
     flash();
@@ -112,11 +102,17 @@ export function LiveSessionScreen({
       });
       setShowFlagPicker(false);
     },
-    [persist],
+    [persist]
   );
 
+  function flash() {
+    setTapping(true);
+    setTimeout(() => setTapping(false), 150);
+  }
+
   const elapsed = now - session.startedAt;
-  const departures = session.departures;
+  const departures = departureTimes(session);
+  const cars = carCount(session);
   const cph = rollingCph(departures, now, session.startedAt);
   const avgGap = avgGapLastN(departures);
   const windowStats = computeWindowStats(session);
@@ -131,8 +127,8 @@ export function LiveSessionScreen({
         : "0:00";
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <div className="shrink-0 border-b border-zinc-800 bg-surface px-4 py-3">
+    <div className="flex min-h-dvh flex-col bg-[#0d0d0f]">
+      <div className="shrink-0 border-b border-zinc-800 bg-zinc-950 px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <button
             type="button"
@@ -152,7 +148,7 @@ export function LiveSessionScreen({
         </div>
 
         <div className="grid grid-cols-4 gap-2 text-center">
-          <Stat label="Cars" value={String(departures.length)} large />
+          <Stat label="Cars" value={String(cars)} large />
           <Stat
             label="Avg SOS"
             value={
@@ -167,7 +163,7 @@ export function LiveSessionScreen({
         </div>
 
         <div className="mt-3">
-          <PaceIndicator cph={cph} />
+          <PaceBar cph={cph} />
         </div>
       </div>
 
@@ -177,9 +173,9 @@ export function LiveSessionScreen({
           onClick={atWindow ? handleDepart : handleArrive}
           className={`flex w-full max-w-lg flex-col items-center justify-center rounded-3xl shadow-2xl ${
             atWindow
-              ? "bg-cfa-red shadow-cfa-red/30 active:bg-cfa-red-dark"
+              ? "bg-cfa shadow-cfa/30 active:bg-cfa-dark"
               : "bg-emerald-600 shadow-emerald-600/30 active:bg-emerald-700"
-          } ${tapping ? "animate-tap-flash animate-tap-scale" : ""}`}
+          } ${tapping ? "scale-[0.97]" : ""}`}
           style={{ minHeight: "52vh" }}
         >
           <span
@@ -189,7 +185,7 @@ export function LiveSessionScreen({
             {displayTime}
           </span>
           <span className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
-            {atWindow ? "Window time" : departures.length > 0 ? "Avg speed of service" : "Waiting for a car"}
+            {atWindow ? "Window time" : cars > 0 ? "Avg speed of service" : "Waiting for a car"}
           </span>
           <span className="mt-8 text-3xl font-black tracking-wider text-white sm:text-4xl">
             {atWindow ? "CAR DEPARTED" : "CAR AT WINDOW"}
@@ -208,7 +204,7 @@ export function LiveSessionScreen({
         )}
       </div>
 
-      <div className="flex shrink-0 gap-3 border-t border-zinc-800 p-4">
+      <div className="flex shrink-0 gap-3 border-t border-zinc-800 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <button
           type="button"
           onClick={() => setShowFlagPicker(true)}
@@ -219,23 +215,20 @@ export function LiveSessionScreen({
         <button
           type="button"
           onClick={() => setShowEndConfirm(true)}
-          className="flex-1 rounded-xl border border-zinc-700 py-4 text-base font-bold text-zinc-400 active:border-cfa-red active:text-cfa-red"
+          className="flex-1 rounded-xl border border-zinc-700 py-4 text-base font-bold text-zinc-400 active:border-cfa active:text-cfa"
         >
           END SESSION
         </button>
       </div>
 
       {showFlagPicker && (
-        <FlagPicker
-          onSelect={handleFlag}
-          onCancel={() => setShowFlagPicker(false)}
-        />
+        <FlagPicker onSelect={handleFlag} onCancel={() => setShowFlagPicker(false)} />
       )}
 
       {showEndConfirm && (
         <ConfirmDialog
           title="End session?"
-          message={`You've logged ${departures.length} cars. This will finalize the session and show the report.`}
+          message={`You've logged ${cars} cars. This will finalize the session and show the report.`}
           confirmLabel="End session"
           onConfirm={() => {
             setShowEndConfirm(false);
@@ -264,9 +257,7 @@ function Stat({
       >
         {value}
       </p>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-        {label}
-      </p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</p>
     </div>
   );
 }

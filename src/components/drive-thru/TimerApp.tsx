@@ -1,33 +1,55 @@
+"use client";
+
 import { useCallback, useEffect, useState } from "react";
-import type { Daypart, LaneConfig, Screen, Session } from "./types";
-import { HomeScreen } from "./screens/HomeScreen";
-import { LiveSessionScreen } from "./screens/LiveSessionScreen";
-import { ReportScreen } from "./screens/ReportScreen";
+import { useRouter } from "next/navigation";
+import { useApp } from "@/context/AppContext";
+import type { Daypart, LaneConfig, Session, TimerScreen } from "@/lib/drive-thru/types";
 import {
   deleteSession,
   getSessionById,
   loadSessions,
   saveSessions,
   upsertSession,
-} from "./lib/storage";
-import { currentCar, syncDepartures } from "./lib/calculations";
+} from "@/lib/drive-thru/storage";
+import { currentCar } from "@/lib/drive-thru/calculations";
+import { TimerHome } from "./TimerHome";
+import { TimerLive } from "./TimerLive";
+import { TimerReport } from "./TimerReport";
 
-function App() {
-  const [sessions, setSessions] = useState<Session[]>(() => loadSessions());
-  const [screen, setScreen] = useState<Screen>("home");
+export function TimerApp() {
+  const router = useRouter();
+  const { hydrated, isLoggedIn, settings } = useApp();
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [ready, setReady] = useState(false);
+  const [screen, setScreen] = useState<TimerScreen>("home");
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [reportSessionId, setReportSessionId] = useState<string | null>(null);
 
-  useEffect(() => {
-    saveSessions(sessions);
-  }, [sessions]);
+  const homeHref = settings.role === "ADMIN" ? "/admin" : "/employee";
 
-  const activeSession = activeSessionId
-    ? getSessionById(sessions, activeSessionId)
-    : null;
-  const reportSession = reportSessionId
-    ? getSessionById(sessions, reportSessionId)
-    : null;
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!isLoggedIn) {
+      router.replace("/login");
+      return;
+    }
+    const loaded = loadSessions();
+    setSessions(loaded);
+    const active = loaded.find((s) => s.endedAt === null);
+    if (active) {
+      setActiveSessionId(active.id);
+      setScreen("live");
+    }
+    setReady(true);
+  }, [hydrated, isLoggedIn, router]);
+
+  useEffect(() => {
+    if (!ready) return;
+    saveSessions(sessions);
+  }, [sessions, ready]);
+
+  const activeSession = activeSessionId ? getSessionById(sessions, activeSessionId) : null;
+  const reportSession = reportSessionId ? getSessionById(sessions, reportSessionId) : null;
 
   const handleStartSession = useCallback(
     (opts: { daypart: Daypart; laneConfig: LaneConfig; note: string }) => {
@@ -39,14 +61,13 @@ function App() {
         startedAt: Date.now(),
         endedAt: null,
         cars: [],
-        departures: [],
         flags: [],
       };
       setSessions((prev) => upsertSession(prev, session));
       setActiveSessionId(session.id);
       setScreen("live");
     },
-    [],
+    []
   );
 
   const handleUpdateSession = useCallback((session: Session) => {
@@ -67,30 +88,35 @@ function App() {
       const cars = hanging
         ? session.cars.map((c) => (c.id === hanging.id ? { ...c, departedAt: now } : c))
         : session.cars;
-      const ended: Session = {
-        ...session,
-        cars,
-        departures: syncDepartures({ ...session, cars }),
-        endedAt: now,
-      };
-      return upsertSession(prev, ended);
+      return upsertSession(prev, { ...session, cars, endedAt: now });
     });
     setReportSessionId(activeSessionId);
     setActiveSessionId(null);
     setScreen("report");
   }, [activeSessionId]);
 
-  const handleDeleteSession = useCallback((id: string) => {
-    setSessions((prev) => deleteSession(prev, id));
-    if (reportSessionId === id) {
-      setReportSessionId(null);
-      setScreen("home");
-    }
-  }, [reportSessionId]);
+  const handleDeleteSession = useCallback(
+    (id: string) => {
+      setSessions((prev) => deleteSession(prev, id));
+      if (reportSessionId === id) {
+        setReportSessionId(null);
+        setScreen("home");
+      }
+    },
+    [reportSessionId]
+  );
+
+  if (!hydrated || !isLoggedIn || !ready) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-[#0d0d0f] text-zinc-500">
+        Loading window timer…
+      </div>
+    );
+  }
 
   if (screen === "live" && activeSession) {
     return (
-      <LiveSessionScreen
+      <TimerLive
         session={activeSession}
         onUpdate={handleUpdateSession}
         onEnd={handleEndSession}
@@ -101,7 +127,7 @@ function App() {
 
   if (screen === "report" && reportSession) {
     return (
-      <ReportScreen
+      <TimerReport
         session={reportSession}
         onBack={() => {
           setScreen("home");
@@ -112,8 +138,9 @@ function App() {
   }
 
   return (
-    <HomeScreen
+    <TimerHome
       sessions={sessions}
+      homeHref={homeHref}
       onStartSession={handleStartSession}
       onOpenReport={(id) => {
         setReportSessionId(id);
@@ -127,5 +154,3 @@ function App() {
     />
   );
 }
-
-export default App;

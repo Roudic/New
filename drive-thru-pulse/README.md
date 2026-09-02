@@ -1,6 +1,6 @@
 # Drive-Thru Pulse
 
-Tap-timer app for measuring drive-thru window departure timing at Chick-fil-A Vestavia Hills (#03339).
+Tap-timer app for measuring drive-thru **window speed of service** and car counts at Chick-fil-A Vestavia Hills (#03339).
 
 ## Quick start
 
@@ -31,10 +31,12 @@ Static files output to `dist/` — deploy anywhere or open locally.
 
 ## Features
 
-- **Live session** — giant tap button logs every car departure with instant feedback
+- **Live session** — tap **Car at window**, tap **Car departed**; live SOS timer with instant feedback
+- **Speed of service** — average / fastest / slowest window time, cars under the 25s goal
 - **Rolling CPH** — 10-minute window pace indicator (green ≥160, yellow 150–159, red <150)
+- **Car counts** — session total plus 15-minute block bar chart
 - **Flags** — one-tap tagging for pull-forward lag, payment delay, etc.
-- **Session report** — 15-min block bar chart, gap analysis, stall events
+- **Session report** — SOS stats, gap analysis, stall events
 - **Export** — CSV download and Slack-ready summary copy
 - **Offline** — localStorage persistence, autosave on every tap, resume after crash
 

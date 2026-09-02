@@ -1,8 +1,14 @@
-import type { Car, Session } from "../types";
+import type { Car, Session } from "./types";
 
-const STORAGE_KEY = "dtp_sessions";
+const STORAGE_KEY = "kitchencheck_dt_timer_sessions_v1";
 
-interface LegacySession extends Omit<Session, "cars" | "departures" | "flags"> {
+interface LegacySession {
+  id: string;
+  daypart: Session["daypart"];
+  laneConfig: Session["laneConfig"];
+  note: string;
+  startedAt: number;
+  endedAt: number | null;
   cars?: Car[];
   departures?: number[];
   flags?: Session["flags"];
@@ -14,19 +20,13 @@ function migrateSession(raw: LegacySession): Session | null {
   }
 
   let cars: Car[] = Array.isArray(raw.cars) ? raw.cars : [];
-  const departures = Array.isArray(raw.departures) ? raw.departures : [];
-  if (cars.length === 0 && departures.length > 0) {
-    cars = departures.map((ts, i) => ({
+  if (cars.length === 0 && Array.isArray(raw.departures)) {
+    cars = raw.departures.map((ts, i) => ({
       id: `legacy-${raw.id}-${i}`,
       arrivedAt: null,
       departedAt: ts,
     }));
   }
-
-  const synced = cars
-    .filter((c): c is Car & { departedAt: number } => c.departedAt != null)
-    .map((c) => c.departedAt)
-    .sort((a, b) => a - b);
 
   return {
     id: raw.id,
@@ -36,12 +36,12 @@ function migrateSession(raw: LegacySession): Session | null {
     startedAt: raw.startedAt,
     endedAt: raw.endedAt ?? null,
     cars,
-    departures: synced,
     flags: Array.isArray(raw.flags) ? raw.flags : [],
   };
 }
 
 export function loadSessions(): Session[] {
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
@@ -54,6 +54,7 @@ export function loadSessions(): Session[] {
 }
 
 export function saveSessions(sessions: Session[]): void {
+  if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 }
 

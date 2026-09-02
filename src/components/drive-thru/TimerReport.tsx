@@ -1,57 +1,57 @@
+"use client";
+
 import { useState } from "react";
-import type { Session } from "../types";
-import { BarChart } from "../components/BarChart";
+import type { Session } from "@/lib/drive-thru/types";
+import { BlockChart } from "./BlockChart";
+import { buildSummaryText, exportSessionCsv } from "@/lib/drive-thru/export";
 import {
+  TARGET_GAP_SECONDS,
+  TARGET_WINDOW_SECONDS,
+  carCount,
   computeGapStats,
   computeWindowStats,
+  departureTimes,
   formatDuration,
   formatTime,
   formatWindowTime,
   getBestWorstBlocks,
   getFifteenMinBlocks,
   overallCph,
-  TARGET_GAP_SECONDS,
-  TARGET_WINDOW_SECONDS,
-} from "../lib/calculations";
-import { buildSummaryText, exportSessionCsv } from "../lib/export";
+  sosBand,
+} from "@/lib/drive-thru/calculations";
 
-interface ReportScreenProps {
+interface TimerReportProps {
   session: Session;
   onBack: () => void;
 }
 
-export function ReportScreen({ session, onBack }: ReportScreenProps) {
+export function TimerReport({ session, onBack }: TimerReportProps) {
   const [copied, setCopied] = useState(false);
 
   const endedAt = session.endedAt ?? Date.now();
   const duration = endedAt - session.startedAt;
-  const cph = overallCph(session.departures.length, duration);
-  const blocks = getFifteenMinBlocks(
-    session.departures,
-    session.startedAt,
-    endedAt,
-  );
+  const cars = carCount(session);
+  const cph = overallCph(cars, duration);
+  const blocks = getFifteenMinBlocks(session, endedAt);
   const { best, worst } = getBestWorstBlocks(blocks);
-  const gapStats = computeGapStats(session.departures);
+  const gapStats = computeGapStats(departureTimes(session));
   const windowStats = computeWindowStats(session);
+  const band = sosBand(windowStats.averageSec);
 
   const handleCopy = async () => {
     const text = buildSummaryText(session);
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -73,7 +73,7 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
       </header>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <ReportStat label="Total cars" value={String(session.departures.length)} />
+        <ReportStat label="Total cars" value={String(cars)} />
         <ReportStat
           label="Avg SOS"
           value={
@@ -85,21 +85,11 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
         />
         <ReportStat label="Overall CPH" value={String(Math.round(cph))} />
         <ReportStat label="Duration" value={formatDuration(duration)} />
-        {best && (
-          <ReportStat
-            label="Best 15-min"
-            value={`${best.count} (${best.cph})`}
-          />
-        )}
-        {worst && (
-          <ReportStat
-            label="Worst 15-min"
-            value={`${worst.count} (${worst.cph})`}
-          />
-        )}
+        {best && <ReportStat label="Best 15-min" value={`${best.count} (${best.cph})`} />}
+        {worst && <ReportStat label="Worst 15-min" value={`${worst.count} (${worst.cph})`} />}
       </div>
 
-      <section className="mb-6 rounded-2xl bg-surface p-5">
+      <section className="mb-6 rounded-2xl bg-zinc-900 p-5">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
           Speed of service
         </h2>
@@ -111,6 +101,7 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
                 ? formatWindowTime(windowStats.averageSec, "sec")
                 : "—"
             }
+            tone={band}
           />
           <MiniStat
             label="Median"
@@ -135,11 +126,7 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
                 ? formatWindowTime(windowStats.slowestSec, "sec")
                 : "—"
             }
-            sub={
-              windowStats.slowestAt
-                ? `at ${formatTime(windowStats.slowestAt)}`
-                : undefined
-            }
+            sub={windowStats.slowestAt ? `at ${formatTime(windowStats.slowestAt)}` : undefined}
           />
           <MiniStat
             label={`Under ${TARGET_WINDOW_SECONDS}s goal`}
@@ -149,43 +136,28 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
         </div>
       </section>
 
-      <section className="mb-6 rounded-2xl bg-surface p-5">
+      <section className="mb-6 rounded-2xl bg-zinc-900 p-5">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
           Cars per 15-min block
         </h2>
-        <BarChart blocks={blocks} />
+        <BlockChart blocks={blocks} />
       </section>
 
-      <section className="mb-6 rounded-2xl bg-surface p-5">
+      <section className="mb-6 rounded-2xl bg-zinc-900 p-5">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
           Gap analysis
         </h2>
         <div className="grid grid-cols-2 gap-4">
           <MiniStat
             label="Average gap"
-            value={
-              gapStats.averageGap !== null
-                ? `${gapStats.averageGap.toFixed(1)}s`
-                : "—"
-            }
+            value={gapStats.averageGap != null ? `${gapStats.averageGap.toFixed(1)}s` : "—"}
           />
           <MiniStat
             label="Longest gap"
-            value={
-              gapStats.longestGap !== null
-                ? `${gapStats.longestGap.toFixed(0)}s`
-                : "—"
-            }
-            sub={
-              gapStats.longestGapAt
-                ? `at ${formatTime(gapStats.longestGapAt)}`
-                : undefined
-            }
+            value={gapStats.longestGap != null ? `${gapStats.longestGap.toFixed(0)}s` : "—"}
+            sub={gapStats.longestGapAt ? `at ${formatTime(gapStats.longestGapAt)}` : undefined}
           />
-          <MiniStat
-            label="Stall events (45s+)"
-            value={String(gapStats.stallEvents)}
-          />
+          <MiniStat label="Stall events (45s+)" value={String(gapStats.stallEvents)} />
           <MiniStat
             label={`Under ${TARGET_GAP_SECONDS}s target`}
             value={`${gapStats.gapsBeatingTarget} / ${gapStats.totalGaps}`}
@@ -194,7 +166,7 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
       </section>
 
       {session.flags.length > 0 && (
-        <section className="mb-6 rounded-2xl bg-surface p-5">
+        <section className="mb-6 rounded-2xl bg-zinc-900 p-5">
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
             Flags ({session.flags.length})
           </h2>
@@ -205,9 +177,7 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
                 className="flex items-center justify-between rounded-lg bg-zinc-800/50 px-3 py-2"
               >
                 <span className="text-sm text-white">{flag.reason}</span>
-                <span className="text-xs tabular-nums text-zinc-500">
-                  {formatTime(flag.at)}
-                </span>
+                <span className="text-xs tabular-nums text-zinc-500">{formatTime(flag.at)}</span>
               </div>
             ))}
           </div>
@@ -224,8 +194,8 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
         </button>
         <button
           type="button"
-          onClick={handleCopy}
-          className="flex-1 rounded-xl bg-cfa-red py-4 text-base font-bold text-white active:bg-cfa-red-dark"
+          onClick={() => void handleCopy()}
+          className="flex-1 rounded-xl bg-cfa py-4 text-base font-bold text-white active:bg-cfa-dark"
         >
           {copied ? "Copied!" : "Copy Summary"}
         </button>
@@ -244,10 +214,8 @@ function ReportStat({
   highlight?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-surface p-4">
-      <p
-        className={`text-2xl font-black tabular-nums ${highlight ? "text-cfa-red" : "text-white"}`}
-      >
+    <div className="rounded-xl bg-zinc-900 p-4">
+      <p className={`text-2xl font-black tabular-nums ${highlight ? "text-cfa" : "text-white"}`}>
         {value}
       </p>
       <p className="text-xs text-zinc-500">{label}</p>
@@ -259,14 +227,24 @@ function MiniStat({
   label,
   value,
   sub,
+  tone,
 }: {
   label: string;
   value: string;
   sub?: string;
+  tone?: "good" | "watch" | "hot" | "na";
 }) {
+  const color =
+    tone === "good"
+      ? "text-emerald-400"
+      : tone === "watch"
+        ? "text-amber-400"
+        : tone === "hot"
+          ? "text-rose-400"
+          : "text-white";
   return (
     <div>
-      <p className="text-xl font-bold tabular-nums text-white">{value}</p>
+      <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
       <p className="text-xs text-zinc-500">{label}</p>
       {sub && <p className="text-[10px] text-zinc-600">{sub}</p>}
     </div>
