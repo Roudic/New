@@ -111,7 +111,10 @@ export function getBestWorstBlocks(blocks: FifteenMinBlock[]): {
   return { best, worst };
 }
 
-export function computeGapStats(departures: number[]): GapStats {
+export function computeGapStats(
+  departures: number[],
+  targetGapSeconds = TARGET_GAP_SECONDS,
+): GapStats {
   const gaps = computeGaps(departures);
 
   if (gaps.length === 0) {
@@ -138,7 +141,7 @@ export function computeGapStats(departures: number[]): GapStats {
       longestGapIndex = i;
     }
     if (gap >= STALL_THRESHOLD_SECONDS) stallEvents++;
-    if (gap <= TARGET_GAP_SECONDS) gapsBeatingTarget++;
+    if (gap <= targetGapSeconds) gapsBeatingTarget++;
   });
 
   return {
@@ -151,9 +154,9 @@ export function computeGapStats(departures: number[]): GapStats {
   };
 }
 
-export function paceColor(cph: number): "green" | "yellow" | "red" {
-  if (cph >= TARGET_CPH) return "green";
-  if (cph >= 150) return "yellow";
+export function paceColor(cph: number, targetCph = TARGET_CPH): "green" | "yellow" | "red" {
+  if (cph >= targetCph) return "green";
+  if (cph >= targetCph - 10) return "yellow";
   return "red";
 }
 
@@ -194,4 +197,45 @@ export function formatDateShort(timestamp: number): string {
 
 export function formatCph(value: number): string {
   return Math.round(value).toString();
+}
+
+export function targetGapSeconds(targetCph: number): number {
+  if (!targetCph || targetCph <= 0) return TARGET_GAP_SECONDS;
+  return 3600 / targetCph;
+}
+
+export function lastBeatAt(startedAt: number, departures: number[]): number {
+  if (departures.length === 0) return startedAt;
+  return departures[departures.length - 1];
+}
+
+export interface PullState {
+  remainingMs: number;
+  overtimeMs: number;
+  isPull: boolean;
+  progress: number;
+  targetGapSec: number;
+}
+
+export function computePullState(
+  now: number,
+  lastBeat: number,
+  targetCph: number,
+): PullState {
+  const targetGapSec = targetGapSeconds(targetCph);
+  const gapMs = targetGapSec * 1000;
+  const elapsed = Math.max(0, now - lastBeat);
+  const remainingMs = gapMs - elapsed;
+  return {
+    remainingMs,
+    overtimeMs: remainingMs < 0 ? -remainingMs : 0,
+    isPull: remainingMs <= 0,
+    progress: gapMs <= 0 ? 1 : Math.min(1, elapsed / gapMs),
+    targetGapSec,
+  };
+}
+
+export function formatPullSeconds(ms: number): string {
+  const sec = Math.abs(ms) / 1000;
+  return sec.toFixed(1);
 }

@@ -7,22 +7,22 @@ import {
   getBestWorstBlocks,
   getFifteenMinBlocks,
   overallCph,
+  targetGapSeconds,
 } from "./calculations";
 
 export function exportSessionCsv(session: Session): void {
   const date = new Date(session.startedAt);
   const dateStr = date.toISOString().slice(0, 10);
-  const filename = `pulse_${dateStr}_${session.daypart}.csv`;
+  const filename = `depart_rate_${dateStr}_${session.daypart}.csv`;
 
   const lines: string[] = [];
-
   lines.push("=== DEPARTURES ===");
-  lines.push("timestamp,time,gap_seconds");
+  lines.push("car,timestamp,time,gap_seconds");
   session.departures.forEach((ts, i) => {
     const gap =
       i === 0 ? "" : ((ts - session.departures[i - 1]) / 1000).toFixed(1);
     const time = new Date(ts).toLocaleTimeString([], { hour12: false });
-    lines.push(`${ts},${time},${gap}`);
+    lines.push(`${i + 1},${ts},${time},${gap}`);
   });
 
   lines.push("");
@@ -52,7 +52,8 @@ export function buildSummaryText(session: Session): string {
     endedAt,
   );
   const { best, worst } = getBestWorstBlocks(blocks);
-  const gapStats = computeGapStats(session.departures);
+  const gapTarget = targetGapSeconds(session.targetCph);
+  const gapStats = computeGapStats(session.departures, gapTarget);
 
   const flagCounts = new Map<string, number>();
   session.flags.forEach((f) => {
@@ -71,8 +72,9 @@ export function buildSummaryText(session: Session): string {
   const daypart = formatDaypartLabel(session.daypart);
 
   const lines = [
-    `🚗 Drive-Thru Pulse — ${daypart} ${dayLabel}`,
-    `Cars: ${session.departures.length} | Duration: ${formatDuration(duration)} | CPH: ${Math.round(cph)}`,
+    `🚗 Depart Rate — ${daypart} ${dayLabel}`,
+    `Cars: ${session.departures.length} | Depart: ${Math.round(cph)} CPH | Target: ${session.targetCph} | ${formatDuration(duration)}`,
+    `Avg gap: ${gapStats.averageGap != null ? `${gapStats.averageGap.toFixed(1)}s` : "—"} (pace ${gapTarget.toFixed(1)}s)`,
   ];
 
   if (best) {

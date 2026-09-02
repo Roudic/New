@@ -1,4 +1,4 @@
-export type Daypart = "breakfast" | "lunch" | "dinner";
+export type Daypart = "breakfast" | "lunch" | "afternoon" | "dinner";
 export type LaneConfig = "single" | "double";
 
 export interface Flag {
@@ -11,6 +11,7 @@ export interface Session {
   daypart: Daypart;
   laneConfig: LaneConfig;
   note: string;
+  targetCph: number;
   startedAt: number;
   endedAt: number | null;
   departures: number[];
@@ -30,6 +31,7 @@ export const FLAG_REASONS = [
 export const STORE_NUMBER = "#03339";
 
 export const TARGET_CPH = 160;
+export const TARGET_CPH_OPTIONS = [140, 150, 160, 180] as const;
 export const TARGET_GAP_SECONDS = 22.5;
 export const STALL_THRESHOLD_SECONDS = 45;
 export const BLOCK_MINUTES = 15;

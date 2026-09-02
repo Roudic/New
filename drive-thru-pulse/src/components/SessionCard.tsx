@@ -71,6 +71,7 @@ export function SessionCard({ session, onOpen, onDelete }: SessionCardProps) {
       <div className="mt-2 flex gap-4 text-xs text-zinc-400">
         <span>{formatDuration(duration)}</span>
         <span>{Math.round(cph)} CPH</span>
+        <span>target {session.targetCph}</span>
         {session.endedAt === null && (
           <span className="font-semibold text-cfa-red">Active</span>
         )}

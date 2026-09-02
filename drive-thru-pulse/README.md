@@ -1,45 +1,47 @@
-# Drive-Thru Pulse
+# Depart Rate
 
-Tap-timer app for measuring drive-thru window departure timing at Chick-fil-A Vestavia Hills (#03339).
+Standalone drive-thru speed-of-service app. Pull timer + depart rate. No login.
 
-## Quick start
+Tap every car that leaves the window. A countdown tells the leader **when to pull** the next car so the line holds the target depart rate.
+
+## Run it
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173 on an iPad or phone at the drive-thru window.
+Open http://localhost:5173 on a phone or iPad at the window.
 
-## Deployed URL
+## How to run a session
 
-When deployed via the root Vercel project (JoltCheck), Pulse is served at **`/pulse/`** on the same domain:
+1. Pick daypart, lane (single/double), and a **depart-rate target** (140 / 150 / 160 / 180 CPH).
+2. Start the session. The pull clock counts down from the pace interval (160 CPH = 22.5 seconds).
+3. When the clock hits **PULL**, send the next car.
+4. Tap **Car departed** when they leave — that logs the car, updates depart rate, and resets the pull clock.
+5. End the session for cars, CPH vs target, 15-minute blocks, and gap stalls.
 
-```
-https://your-app.vercel.app/pulse/
-```
+## Deploy on Vercel
 
-The root `npm run build` bundles Pulse into `public/pulse/` automatically.
+Create a new Vercel project from this folder (or set **Root Directory** to this app):
 
-## Build
+- Framework: Vite
+- Build command: `npm run build`
+- Output: `dist`
 
-```bash
-npm run build
-```
-
-Static files output to `dist/` — deploy anywhere or open locally.
+The site root **is** Depart Rate. It is not KitchenCheck.
 
 ## Features
 
-- **Live session** — giant tap button logs every car departure with instant feedback
-- **Rolling CPH** — 10-minute window pace indicator (green ≥160, yellow 150–159, red <150)
-- **Flags** — one-tap tagging for pull-forward lag, payment delay, etc.
-- **Session report** — 15-min block bar chart, gap analysis, stall events
-- **Export** — CSV download and Slack-ready summary copy
-- **Offline** — localStorage persistence, autosave on every tap, resume after crash
+- **Pull timer** — countdown to the next pull; turns red and beeps when it's time
+- **Depart rate** — rolling cars/hour vs the target you set
+- **Car counts** — session total plus 15-minute blocks
+- **Flags** — pull-forward lag, payment delay, order not ready, lane blocked
+- **Export** — CSV and a copy-paste summary
+- **Offline** — localStorage, autosave, resume after crash
 
 ## Tech
 
 - Vite + React (TypeScript)
 - Tailwind CSS
-- No backend, no login — works fully offline after first load
+- No backend, no login

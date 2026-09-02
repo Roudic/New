@@ -29,12 +29,18 @@ function App() {
     : null;
 
   const handleStartSession = useCallback(
-    (opts: { daypart: Daypart; laneConfig: LaneConfig; note: string }) => {
+    (opts: {
+      daypart: Daypart;
+      laneConfig: LaneConfig;
+      note: string;
+      targetCph: number;
+    }) => {
       const session: Session = {
         id: crypto.randomUUID(),
         daypart: opts.daypart,
         laneConfig: opts.laneConfig,
         note: opts.note,
+        targetCph: opts.targetCph,
         startedAt: Date.now(),
         endedAt: null,
         departures: [],
@@ -60,8 +66,7 @@ function App() {
     setSessions((prev) => {
       const session = getSessionById(prev, activeSessionId);
       if (!session) return prev;
-      const ended: Session = { ...session, endedAt: Date.now() };
-      return upsertSession(prev, ended);
+      return upsertSession(prev, { ...session, endedAt: Date.now() });
     });
     setReportSessionId(activeSessionId);
     setActiveSessionId(null);

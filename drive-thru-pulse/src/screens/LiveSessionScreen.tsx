@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "../types";
 import { PaceIndicator } from "../components/PaceIndicator";
+import { PullClock } from "../components/PullClock";
 import { FlagPicker } from "../components/FlagPicker";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import {
   avgGapLastN,
+  computePullState,
   formatDuration,
+  lastBeatAt,
   rollingCph,
+  targetGapSeconds,
 } from "../lib/calculations";
 import { useWakeLock } from "../hooks/useWakeLock";
 
@@ -15,6 +19,24 @@ interface LiveSessionScreenProps {
   onUpdate: (session: Session) => void;
   onEnd: () => void;
   onBack: () => void;
+}
+
+function beep() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+    osc.onended = () => void ctx.close();
+  } catch {
+    // Audio is optional.
+  }
 }
 
 export function LiveSessionScreen({
@@ -28,14 +50,26 @@ export function LiveSessionScreen({
   const [showFlagPicker, setShowFlagPicker] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const sessionRef = useRef(session);
+  const wasPull = useRef(false);
 
   sessionRef.current = session;
   useWakeLock(true);
 
+  const lastBeat = lastBeatAt(session.startedAt, session.departures);
+  const pull = computePullState(now, lastBeat, session.targetCph);
+
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
+    const id = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    if (pull.isPull && !wasPull.current) {
+      beep();
+      navigator.vibrate?.(200);
+    }
+    wasPull.current = pull.isPull;
+  }, [pull.isPull]);
 
   const persist = useCallback(
     (updated: Session) => {
@@ -44,13 +78,12 @@ export function LiveSessionScreen({
     [onUpdate],
   );
 
-  const handleTap = useCallback(() => {
+  const handleDepart = useCallback(() => {
     const current = sessionRef.current;
-    const updated: Session = {
+    persist({
       ...current,
       departures: [...current.departures, Date.now()],
-    };
-    persist(updated);
+    });
     setTapping(true);
     setTimeout(() => setTapping(false), 150);
   }, [persist]);
@@ -66,10 +99,9 @@ export function LiveSessionScreen({
 
   const handleFlag = useCallback(
     (reason: string) => {
-      const current = sessionRef.current;
       persist({
-        ...current,
-        flags: [...current.flags, { at: Date.now(), reason }],
+        ...sessionRef.current,
+        flags: [...sessionRef.current.flags, { at: Date.now(), reason }],
       });
       setShowFlagPicker(false);
     },
@@ -81,7 +113,9 @@ export function LiveSessionScreen({
   const avgGap = avgGapLastN(session.departures);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
+    <div
+      className={`flex min-h-dvh flex-col ${pull.isPull ? "bg-[#1a0709]" : "bg-background"}`}
+    >
       <div className="shrink-0 border-b border-zinc-800 bg-surface px-4 py-3">
         <div className="mb-3 flex items-center justify-between">
           <button
@@ -103,38 +137,39 @@ export function LiveSessionScreen({
 
         <div className="grid grid-cols-4 gap-2 text-center">
           <Stat label="Cars" value={String(session.departures.length)} large />
-          <Stat label="CPH" value={String(Math.round(cph))} large />
+          <Stat label="Depart" value={String(Math.round(cph))} large />
+          <Stat label="Target" value={String(session.targetCph)} />
           <Stat label="Time" value={formatDuration(elapsed)} />
-          <Stat
-            label="Avg gap"
-            value={avgGap !== null ? `${avgGap.toFixed(1)}s` : "—"}
-          />
         </div>
 
         <div className="mt-3">
-          <PaceIndicator cph={cph} />
+          <PaceIndicator cph={cph} targetCph={session.targetCph} />
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center p-4">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-4">
+        <PullClock state={pull} />
+
         <button
           type="button"
-          onClick={handleTap}
-          className={`flex w-full max-w-lg flex-col items-center justify-center rounded-3xl bg-cfa-red shadow-2xl shadow-cfa-red/30 active:bg-cfa-red-dark ${
+          onClick={handleDepart}
+          className={`flex w-full max-w-lg flex-col items-center justify-center rounded-3xl bg-cfa-red py-8 shadow-2xl shadow-cfa-red/30 active:bg-cfa-red-dark ${
             tapping ? "animate-tap-flash animate-tap-scale" : ""
           }`}
-          style={{ minHeight: "60vh" }}
         >
-          <span className="text-4xl font-black tracking-wider text-white sm:text-5xl">
-            CAR
+          <span className="text-3xl font-black tracking-wider text-white sm:text-4xl">
+            CAR DEPARTED
           </span>
-          <span className="text-4xl font-black tracking-wider text-white sm:text-5xl">
-            DEPARTED
-          </span>
-          <span className="mt-4 text-lg font-medium text-white/70">
-            Tap every departure
+          <span className="mt-2 text-sm font-medium text-white/70">
+            Tap every car that leaves — resets the pull clock
           </span>
         </button>
+
+        <p className="text-xs text-zinc-500">
+          {avgGap != null ? `Last 10-car gap ${avgGap.toFixed(1)}s` : "Waiting on the first car"}
+          {" · "}
+          {session.targetCph} CPH = {targetGapSeconds(session.targetCph).toFixed(1)}s between cars
+        </p>
       </div>
 
       <div className="flex shrink-0 gap-3 border-t border-zinc-800 p-4">

@@ -8,7 +8,7 @@ import {
   getBestWorstBlocks,
   getFifteenMinBlocks,
   overallCph,
-  TARGET_GAP_SECONDS,
+  targetGapSeconds,
 } from "../lib/calculations";
 import { buildSummaryText, exportSessionCsv } from "../lib/export";
 
@@ -23,13 +23,14 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
   const endedAt = session.endedAt ?? Date.now();
   const duration = endedAt - session.startedAt;
   const cph = overallCph(session.departures.length, duration);
+  const gapTarget = targetGapSeconds(session.targetCph);
   const blocks = getFifteenMinBlocks(
     session.departures,
     session.startedAt,
     endedAt,
   );
   const { best, worst } = getBestWorstBlocks(blocks);
-  const gapStats = computeGapStats(session.departures);
+  const gapStats = computeGapStats(session.departures, gapTarget);
 
   const handleCopy = async () => {
     const text = buildSummaryText(session);
@@ -38,7 +39,6 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
@@ -63,15 +63,20 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
       <header className="mb-6">
         <h1 className="text-2xl font-black text-white">Session Report</h1>
         <p className="mt-1 text-sm capitalize text-zinc-400">
-          {session.daypart} · {session.laneConfig} lane
+          {session.daypart} · {session.laneConfig} lane · {session.targetCph} CPH target
           {session.note && ` · ${session.note}`}
         </p>
       </header>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <ReportStat label="Total cars" value={String(session.departures.length)} />
+        <ReportStat
+          label="Depart rate"
+          value={String(Math.round(cph))}
+          highlight
+        />
+        <ReportStat label="Target" value={String(session.targetCph)} />
         <ReportStat label="Duration" value={formatDuration(duration)} />
-        <ReportStat label="Overall CPH" value={String(Math.round(cph))} highlight />
         {best && (
           <ReportStat
             label="Best 15-min"
@@ -95,7 +100,7 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
 
       <section className="mb-6 rounded-2xl bg-surface p-5">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          Gap analysis
+          Depart gaps
         </h2>
         <div className="grid grid-cols-2 gap-4">
           <MiniStat
@@ -124,7 +129,7 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
             value={String(gapStats.stallEvents)}
           />
           <MiniStat
-            label={`Under ${TARGET_GAP_SECONDS}s target`}
+            label={`On pace (≤${gapTarget.toFixed(1)}s)`}
             value={`${gapStats.gapsBeatingTarget} / ${gapStats.totalGaps}`}
           />
         </div>
@@ -161,7 +166,7 @@ export function ReportScreen({ session, onBack }: ReportScreenProps) {
         </button>
         <button
           type="button"
-          onClick={handleCopy}
+          onClick={() => void handleCopy()}
           className="flex-1 rounded-xl bg-cfa-red py-4 text-base font-bold text-white active:bg-cfa-red-dark"
         >
           {copied ? "Copied!" : "Copy Summary"}
