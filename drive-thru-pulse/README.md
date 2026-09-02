@@ -16,10 +16,10 @@ Open http://localhost:5173 on a phone or iPad at the window.
 
 ## Deployed URL
 
-When the root JoltCheck project is deployed, this app is a separate SPA at **`/pulse/`**:
+When the root project is deployed, open **`/pulse`** on the same domain:
 
 ```
-https://your-app.vercel.app/pulse/
+https://your-app.vercel.app/pulse
 ```
 
 No login. Works offline after first load.

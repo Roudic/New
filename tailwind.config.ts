@@ -5,6 +5,7 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/depart-rate/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
@@ -46,8 +47,19 @@ const config: Config = {
         "hero-gradient":
           "radial-gradient(circle at top left, rgba(29, 95, 232, 0.12), transparent 42%), radial-gradient(circle at top right, rgba(20, 184, 166, 0.08), transparent 38%)",
       },
-      backgroundSize: {
-        grid: "24px 24px",
+      animation: {
+        "tap-flash": "tap-flash 150ms ease-out",
+        "tap-scale": "tap-scale 150ms ease-out",
+      },
+      keyframes: {
+        "tap-flash": {
+          "0%": { backgroundColor: "#ff2d4d" },
+          "100%": { backgroundColor: "#E51636" },
+        },
+        "tap-scale": {
+          "0%": { transform: "scale(0.96)" },
+          "100%": { transform: "scale(1)" },
+        },
       },
     },
   },

@@ -2,7 +2,7 @@
 
 Operations checklist app for teams — login, admin assignments, checklist builder, and progress tracking.
 
-> **Also in this repo:** [Depart Rate](./drive-thru-pulse/) — a standalone drive-thru speed-of-service app (pull timer + depart rate). Open [`/pulse/`](http://localhost:3000/pulse/) or run `npm run dev:pulse`. It is not part of KitchenCheck.
+> **Depart Rate** (standalone drive-thru SOS) lives at **[`/pulse`](http://localhost:3000/pulse)** — pull timer + depart rate, no KitchenCheck login. Kitchen audit stays at `/`.
 
 The app **automatically uses a cloud database** when `DATABASE_URL` is configured (Turso on Vercel, SQLite locally). Without a database, it falls back to **localStorage demo mode** on that device.
 
