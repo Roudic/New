@@ -1,28 +1,17 @@
 # Depart Rate
 
-Standalone speed-of-service app for the drive-thru leader. Not part of KitchenCheck.
+Standalone drive-thru speed-of-service app. Pull timer + depart rate. No login.
 
 Tap every car that leaves the window. A countdown tells the leader **when to pull** the next car so the line holds the target depart rate.
 
-## Quick start
+## Run it
 
 ```bash
-cd drive-thru-pulse
 npm install
 npm run dev
 ```
 
 Open http://localhost:5173 on a phone or iPad at the window.
-
-## Deployed URL
-
-When the root project is deployed, open **`/pulse`** on the same domain:
-
-```
-https://your-app.vercel.app/pulse
-```
-
-No login. Works offline after first load.
 
 ## How to run a session
 
@@ -31,6 +20,16 @@ No login. Works offline after first load.
 3. When the clock hits **PULL**, send the next car.
 4. Tap **Car departed** when they leave — that logs the car, updates depart rate, and resets the pull clock.
 5. End the session for cars, CPH vs target, 15-minute blocks, and gap stalls.
+
+## Deploy on Vercel
+
+Create a new Vercel project from this folder (or set **Root Directory** to this app):
+
+- Framework: Vite
+- Build command: `npm run build`
+- Output: `dist`
+
+The site root **is** Depart Rate. It is not KitchenCheck.
 
 ## Features
 
