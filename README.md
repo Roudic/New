@@ -3,6 +3,8 @@
 Operations checklist app for teams — login, admin assignments, checklist builder, and progress tracking.
 
 > **Also in this repo:** [Drive-Thru Pulse](./drive-thru-pulse/) — a tap-timer app for measuring drive-thru window departure timing at CFA #03339. See [`drive-thru-pulse/README.md`](./drive-thru-pulse/README.md) for setup.
+>
+> **Second Brain OPs** (Hueytown managers only): dashboard at `/brain`, 3D map at `/brain/map`. Not JoltCheck crew login. Drive is the intended file layer but is **not wired**.
 
 The app **automatically uses a cloud database** when `DATABASE_URL` is configured (Turso on Vercel, SQLite locally). Without a database, it falls back to **localStorage demo mode** on that device.
 
@@ -97,6 +99,17 @@ Operator scorecard at [`/scorecard`](http://localhost:3000/scorecard), seeded fr
 - **Upload** — CSV or the workbook PDF. The parser maps Daily Data columns, monthly P&L overlays, and the Goals tab. Excel percent bugs (`8500%` OSAT → `85`) and glued PDF cells (`$7,99419.90%`) are normalized.
 
 Templates live in [`public/scorecard/`](./public/scorecard/). `npm run test:scorecard` checks the PDF/CSV parser against the Hueytown workbook.
+
+## Second Brain OPs (managers only)
+
+Shared capture inbox for the 4 Chick-fil-A Hueytown managers. Dashboard at **`/brain`**. The agent classifies unorganized notes, files them, and **verifies** the filing decision (second scorer; `general` / low-confidence stay in needs-review). **Drive is not wired yet** (folder id is null; example catalog IDs are fixtures, not live files).
+
+```bash
+npm run test:second-brain
+npx tsx scripts/second-brain.ts capture --actor vinziant@gmail.com --title "Sysco short" --body "Truck shorted nuggets." --process
+```
+
+See [`second-brain/README.md`](./second-brain/README.md). Manager dashboard: [`/brain`](/brain) (not JoltCheck crew login).
 
 ## Features
 

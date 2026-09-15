@@ -1,0 +1,42 @@
+[
+  {
+    "id": "drive-sop-food-safety",
+    "name": "Food Safety SOP",
+    "webViewLink": "https://drive.google.com/file/d/drive-sop-food-safety/view",
+    "folder": "SOPs",
+    "keywords": ["food safety", "sop", "temperature", "incident"],
+    "managerShared": true,
+    "visibility": "managers-only",
+    "simulated": true
+  },
+  {
+    "id": "drive-vendor-sysco",
+    "name": "Sysco order guide",
+    "webViewLink": "https://drive.google.com/file/d/drive-vendor-sysco/view",
+    "folder": "Vendors",
+    "keywords": ["sysco", "invoice", "order guide", "credit memo"],
+    "managerShared": true,
+    "visibility": "managers-only",
+    "simulated": true
+  },
+  {
+    "id": "drive-training-pathway",
+    "name": "Team Member Pathway",
+    "webViewLink": "https://drive.google.com/file/d/drive-training-pathway/view",
+    "folder": "Training",
+    "keywords": ["pathway", "trainee", "onboarding", "new hire"],
+    "managerShared": true,
+    "visibility": "managers-only",
+    "simulated": true
+  },
+  {
+    "id": "drive-week-schedule",
+    "name": "Week schedule",
+    "webViewLink": "https://drive.google.com/file/d/drive-week-schedule/view",
+    "folder": "Schedules",
+    "keywords": ["schedule", "roster", "availability"],
+    "managerShared": true,
+    "visibility": "managers-only",
+    "simulated": true
+  }
+]

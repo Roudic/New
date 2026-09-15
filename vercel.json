@@ -3,6 +3,7 @@
   "buildCommand": "prisma generate && npm run build:pulse && next build",
   "installCommand": "npm install && npm install --prefix drive-thru-pulse",
   "rewrites": [
+    { "source": "/brain/api/:path*", "destination": "/api/brain/:path*" },
     { "source": "/pulse", "destination": "/pulse/index.html" },
     { "source": "/pulse/", "destination": "/pulse/index.html" }
   ]

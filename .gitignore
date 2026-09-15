@@ -30,6 +30,9 @@ yarn-error.log*
 .env
 .env*.local
 
+# second-brain runtime (live notes stay in the manager Drive folder, not git)
+/data/second-brain/
+
 # database
 /prisma/dev.db
 /prisma/dev.db-journal
