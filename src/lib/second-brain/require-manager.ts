@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { authorize } from "@/lib/second-brain/access";
 import {
   MANAGER_COOKIE,
-  readManagerSession,
+  resolveBrainActor,
   type ManagerLoginResult,
 } from "@/lib/second-brain/manager-auth";
 import { withBrainStore } from "@/lib/second-brain/server-store";
@@ -22,7 +22,7 @@ export async function withManagerStore<T>(
   action: AccessAction,
   fn: (ctx: { email: string; store: BrainStore }) => T | Promise<T>
 ): Promise<T | NextResponse> {
-  const email = readManagerSession(cookies().get(MANAGER_COOKIE)?.value);
+  const email = resolveBrainActor(cookies().get(MANAGER_COOKIE)?.value);
   if (!email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

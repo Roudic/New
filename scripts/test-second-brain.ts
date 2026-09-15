@@ -5,8 +5,13 @@ import {
   applyFiling,
   authenticateManager,
   authorize,
+  BRAIN_LOGIN_ENABLED,
   INVALID_CREDENTIALS_REASON,
   buildBrainGraph,
+  createSimNodes,
+  fibonacciSphere,
+  pickProjectedNode,
+  projectNodes,
   captureNote,
   classify,
   commitVerified,
@@ -27,8 +32,10 @@ import {
   proposeFiling,
   readManagerSession,
   readNotes,
+  resolveBrainActor,
   reviewClassify,
   signManagerSession,
+  stepForce,
   STORE_TEAM_DENYLIST,
   verifyFiling,
   type CapturedNote,
@@ -701,6 +708,22 @@ function testManagerDashboardAuth() {
   console.log("ok manager dashboard auth does not leak password correctness");
 }
 
+function testBrainLoginOff() {
+  assert(BRAIN_LOGIN_ENABLED === false, "login gate is off until production can set a password");
+  assert(
+    resolveBrainActor(undefined) === OPERATOR_EMAIL,
+    "login off: missing cookie still runs as Joshua"
+  );
+  assert(
+    resolveBrainActor("not-a-session") === OPERATOR_EMAIL,
+    "login off: junk token still runs as Joshua"
+  );
+  const roster = defaultRoster();
+  const access = authorize(resolveBrainActor(undefined) ?? "", roster, "capture");
+  assert(access.ok && access.email === OPERATOR_EMAIL, "login off: Joshua can capture");
+  console.log("ok /brain login is off; APIs run as Joshua");
+}
+
 function testDoesNotTreatPlaceholderCatalogAsLive() {
   const store = storeWithCatalog();
   const note = captureNote(store, {
@@ -858,6 +881,26 @@ function testBrainMapGraph() {
   console.log("ok 3D brain map graph (no fake Drive)");
 }
 
+function testBrainMapView() {
+  const graph = buildBrainGraph([], []);
+  const sim = createSimNodes(graph.nodes);
+  assert(sim.length === graph.nodes.length && sim.length >= 6, "sim nodes match graph");
+  const seeds = fibonacciSphere(sim.length, 150);
+  const keys: Record<string, true> = {};
+  for (let i = 0; i < seeds.length; i += 1) {
+    const key = `${Math.round(seeds[i].x)}:${Math.round(seeds[i].y)}:${Math.round(seeds[i].z)}`;
+    assert(!keys[key], "sphere seeds are distinct");
+    keys[key] = true;
+  }
+  for (let i = 0; i < 40; i += 1) stepForce(sim, graph.links, 0.9);
+  const projected = projectNodes(sim, 0.4, 0.2, 420, 800, 500);
+  assert(projected.length === sim.length, "every note is projected");
+  const front = projected[projected.length - 1];
+  const hit = pickProjectedNode(projected, front.sx, front.sy);
+  assert(hit && hit.id === front.node.id, "click picks the visible note");
+  console.log("ok canvas 2.5D map view");
+}
+
 function main() {
   testClassify();
   testFileAndVerify();
@@ -874,7 +917,9 @@ function main() {
   testVerifyBlocksLeakedDriveLink();
   testDoesNotTreatPlaceholderCatalogAsLive();
   testManagerDashboardAuth();
+  testBrainLoginOff();
   testBrainMapGraph();
+  testBrainMapView();
   console.log("ok second-brain phase 1");
 }
 

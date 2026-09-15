@@ -4,7 +4,9 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Brain, LogOut, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Brain, ShieldAlert } from "lucide-react";
+import { BRAIN_LOGIN_ENABLED } from "@/lib/second-brain/brain-login";
+import BrainOpenBanner from "../BrainOpenBanner";
 import type { BrainGraphLink, BrainGraphNode } from "@/lib/second-brain/graph";
 import { MAP_CATEGORY_COLORS } from "@/lib/second-brain/graph";
 
@@ -50,7 +52,7 @@ export default function BrainMap() {
 
   const load = useCallback(async () => {
     const res = await fetch("/brain/api/graph");
-    if (res.status === 401 || res.status === 403) {
+    if (BRAIN_LOGIN_ENABLED && (res.status === 401 || res.status === 403)) {
       router.replace("/brain/login");
       return;
     }
@@ -68,6 +70,7 @@ export default function BrainMap() {
   }, [load]);
 
   const logout = async () => {
+    if (!BRAIN_LOGIN_ENABLED) return;
     await fetch("/brain/api/logout", { method: "POST" });
     router.replace("/brain/login");
   };
@@ -101,11 +104,14 @@ export default function BrainMap() {
             <p className="text-xs text-slate-400">{data.actor}</p>
           </div>
         </div>
-        <button type="button" onClick={() => void logout()} className="btn-secondary py-2">
-          <LogOut className="h-4 w-4" />
-          Sign out
-        </button>
+        {BRAIN_LOGIN_ENABLED && (
+          <button type="button" onClick={() => void logout()} className="btn-secondary py-2">
+            Sign out
+          </button>
+        )}
       </header>
+
+      <BrainOpenBanner dark />
 
       <div
         id="drive-status"

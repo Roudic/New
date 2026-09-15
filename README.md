@@ -4,7 +4,7 @@ Operations checklist app for teams — login, admin assignments, checklist build
 
 > **Also in this repo:** [Drive-Thru Pulse](./drive-thru-pulse/) — a tap-timer app for measuring drive-thru window departure timing at CFA #03339. See [`drive-thru-pulse/README.md`](./drive-thru-pulse/README.md) for setup.
 >
-> **Second Brain OPs** (Hueytown managers only): dashboard at `/brain`, 3D map at `/brain/map`. Not JoltCheck crew login. Drive is the intended file layer but is **not wired**.
+> **Second Brain OPs** (Hueytown managers only): dashboard at `/brain`, 3D map at `/brain/map`. **Login is temporarily off** — the manager dashboard is open as Joshua. Not JoltCheck crew login. Drive is the intended file layer but is **not wired**.
 
 The app **automatically uses a cloud database** when `DATABASE_URL` is configured (Turso on Vercel, SQLite locally). Without a database, it falls back to **localStorage demo mode** on that device.
 
@@ -109,7 +109,7 @@ npm run test:second-brain
 npx tsx scripts/second-brain.ts capture --actor vinziant@gmail.com --title "Sysco short" --body "Truck shorted nuggets." --process
 ```
 
-See [`second-brain/README.md`](./second-brain/README.md). Manager dashboard: [`/brain`](/brain) (not JoltCheck crew login).
+See [`second-brain/README.md`](./second-brain/README.md). Manager dashboard: [`/brain`](/brain) (login off for now; not JoltCheck crew login).
 
 ## Features
 

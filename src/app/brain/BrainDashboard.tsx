@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, Inbox, LogOut, Network, ShieldAlert, Sparkles } from "lucide-react";
+import { Brain, Inbox, Network, ShieldAlert, Sparkles } from "lucide-react";
+import { BRAIN_LOGIN_ENABLED } from "@/lib/second-brain/brain-login";
+import BrainOpenBanner from "./BrainOpenBanner";
 
 interface Seat {
   seat: number;
@@ -99,7 +101,7 @@ export default function BrainDashboard() {
 
   const load = useCallback(async () => {
     const res = await fetch("/brain/api/state");
-    if (res.status === 401 || res.status === 403) {
+    if (BRAIN_LOGIN_ENABLED && (res.status === 401 || res.status === 403)) {
       router.replace("/brain/login");
       return;
     }
@@ -156,6 +158,7 @@ export default function BrainDashboard() {
   };
 
   const logout = async () => {
+    if (!BRAIN_LOGIN_ENABLED) return;
     await fetch("/brain/api/logout", { method: "POST" });
     router.replace("/brain/login");
   };
@@ -190,12 +193,15 @@ export default function BrainDashboard() {
             <Network className="h-4 w-4" />
             3D brain map
           </Link>
-          <button type="button" onClick={() => void logout()} className="btn-secondary py-2">
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
+          {BRAIN_LOGIN_ENABLED && (
+            <button type="button" onClick={() => void logout()} className="btn-secondary py-2">
+              Sign out
+            </button>
+          )}
         </div>
       </header>
+
+      <BrainOpenBanner />
 
       <div
         id="drive-status"

@@ -46,10 +46,12 @@ export {
   authenticateManager,
   signManagerSession,
   readManagerSession,
+  resolveBrainActor,
   MANAGER_COOKIE,
   MANAGER_COOKIE_PATH,
   INVALID_CREDENTIALS_REASON,
 } from "./manager-auth";
+export { BRAIN_LOGIN_ENABLED } from "./brain-login";
 export {
   captureNote,
   processNote,
@@ -63,6 +65,13 @@ export {
   MAP_CATEGORY_COLORS,
 } from "./graph";
 export type { BrainGraph, BrainGraphNode, BrainGraphLink } from "./graph";
+export {
+  createSimNodes,
+  fibonacciSphere,
+  pickProjectedNode,
+  projectNodes,
+  stepForce,
+} from "./map-view";
 export type {
   AccessRoster,
   CapturedNote,
