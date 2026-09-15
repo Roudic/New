@@ -6,7 +6,7 @@ import { Brain, Lock, Mail } from "lucide-react";
 
 export default function BrainLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("vinziant@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -16,7 +16,7 @@ export default function BrainLoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch("/api/brain/login", {
+      const res = await fetch("/brain/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

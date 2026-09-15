@@ -12,7 +12,7 @@ import type { BrainStore } from "@/lib/second-brain/store";
 
 export function loginFailed(result: ManagerLoginResult): NextResponse {
   const status =
-    result.code === "store-team-denied" || result.code === "not-a-manager"
+    result.code === "pending-seat"
       ? 403
       : result.code === "password-not-configured"
         ? 503

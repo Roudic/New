@@ -17,6 +17,7 @@ const nextConfig = {
   ],
   async rewrites() {
     return [
+      { source: "/brain/api/:path*", destination: "/api/brain/:path*" },
       { source: "/pulse", destination: "/pulse/index.html" },
       { source: "/pulse/", destination: "/pulse/index.html" },
     ];

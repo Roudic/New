@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { authenticateManager, MANAGER_COOKIE, signManagerSession } from "@/lib/second-brain/manager-auth";
+import {
+  authenticateManager,
+  MANAGER_COOKIE,
+  managerCookieOptions,
+  signManagerSession,
+} from "@/lib/second-brain/manager-auth";
 import { loginFailed } from "@/lib/second-brain/require-manager";
 import { withBrainStore } from "@/lib/second-brain/server-store";
 
@@ -20,13 +25,11 @@ export async function POST(request: Request) {
     return loginFailed(result);
   }
 
-  cookies().set(MANAGER_COOKIE, signManagerSession(result.email), {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-    secure: process.env.NODE_ENV === "production",
-  });
+  cookies().set(
+    MANAGER_COOKIE,
+    signManagerSession(result.email),
+    managerCookieOptions(60 * 60 * 24 * 7)
+  );
 
   return NextResponse.json({ ok: true, email: result.email });
 }

@@ -97,7 +97,7 @@ export default function BrainDashboard() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/brain/state");
+    const res = await fetch("/brain/api/state");
     if (res.status === 401 || res.status === 403) {
       router.replace("/brain/login");
       return;
@@ -120,7 +120,7 @@ export default function BrainDashboard() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/brain/capture", {
+      const res = await fetch("/brain/api/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, body }),
@@ -142,7 +142,7 @@ export default function BrainDashboard() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/brain/process", { method: "POST" });
+      const res = await fetch("/brain/api/process", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Process failed.");
@@ -155,7 +155,7 @@ export default function BrainDashboard() {
   };
 
   const logout = async () => {
-    await fetch("/api/brain/logout", { method: "POST" });
+    await fetch("/brain/api/logout", { method: "POST" });
     router.replace("/brain/login");
   };
 

@@ -5,6 +5,7 @@ import {
   applyFiling,
   authenticateManager,
   authorize,
+  INVALID_CREDENTIALS_REASON,
   captureNote,
   classify,
   commitVerified,
@@ -592,11 +593,28 @@ function testVerifyBlocksLeakedDriveLink() {
   console.log("ok verify blocks store-team Drive link");
 }
 
+function assertInvalidCredentials(
+  result: ReturnType<typeof authenticateManager>,
+  label: string
+) {
+  assert(!result.ok, `${label}: must fail`);
+  assert(
+    result.code === "invalid-credentials",
+    `${label}: code must be invalid-credentials, got ${result.code}`
+  );
+  assert(
+    result.reason === INVALID_CREDENTIALS_REASON,
+    `${label}: reason must not leak identity, got ${result.reason}`
+  );
+}
+
 function testManagerDashboardAuth() {
   const prevPassword = process.env.SECOND_BRAIN_PASSWORD;
-  const prevSecret = process.env.NEXTAUTH_SECRET;
+  const prevBrainSecret = process.env.SECOND_BRAIN_SECRET;
+  const prevNextSecret = process.env.NEXTAUTH_SECRET;
   process.env.SECOND_BRAIN_PASSWORD = "hueytown-managers";
-  process.env.NEXTAUTH_SECRET = "unit-test-secret";
+  process.env.SECOND_BRAIN_SECRET = "unit-brain-secret";
+  process.env.NEXTAUTH_SECRET = "unit-nextauth-secret";
   try {
     const roster = defaultRoster();
     const ok = authenticateManager(OPERATOR_EMAIL, "hueytown-managers", roster);
@@ -604,21 +622,65 @@ function testManagerDashboardAuth() {
     const token = signManagerSession(ok.email);
     assert(readManagerSession(token) === OPERATOR_EMAIL, "session round-trips");
 
-    const crew = authenticateManager("alex@store.com", "hueytown-managers", roster);
-    assert(crew.code === "store-team-denied", "crew denied even with manager password");
-    const admin = authenticateManager("admin@joltcheck.com", "hueytown-managers", roster);
-    assert(admin.code === "store-team-denied", "JoltCheck admin denied");
-    const unknown = authenticateManager("random@elsewhere.com", "hueytown-managers", roster);
-    assert(!unknown.ok, "unknown email denied");
-    const wrong = authenticateManager(OPERATOR_EMAIL, "admin123", roster);
-    assert(wrong.code === "invalid-credentials", "JoltCheck password is not the manager password");
+    const leakCases = [
+      ["alex@store.com", "wrong-password", "store-team wrong password"],
+      ["alex@store.com", "hueytown-managers", "store-team correct password"],
+      ["sam@store.com", "hueytown-managers", "other crew correct password"],
+      ["admin@joltcheck.com", "hueytown-managers", "JoltCheck admin correct password"],
+      ["x@y.com", "wrong-password", "unknown wrong password"],
+      ["x@y.com", "hueytown-managers", "unknown correct password"],
+      [OPERATOR_EMAIL, "admin123", "Joshua wrong password"],
+      [OPERATOR_EMAIL, "wrong-password", "Joshua another wrong password"],
+    ] as const;
+    for (const [email, password, label] of leakCases) {
+      assertInvalidCredentials(authenticateManager(email, password, roster), label);
+    }
+
+    const granted = grantManagerSeat(roster, OPERATOR_EMAIL, {
+      name: "Manager Two",
+      email: "manager.two@example.com",
+    });
+    assert(granted.ok, "grant pending manager for login leak test");
+    if (!granted.ok) return;
+    assertInvalidCredentials(
+      authenticateManager("manager.two@example.com", "wrong-password", granted.roster),
+      "pending seat wrong password"
+    );
+    const pendingOk = authenticateManager(
+      "manager.two@example.com",
+      "hueytown-managers",
+      granted.roster
+    );
+    assert(!pendingOk.ok, "pending seat cannot sign in");
+    assert(
+      pendingOk.code === "pending-seat",
+      "pending seat is distinct only after the password matches"
+    );
+
+    delete process.env.SECOND_BRAIN_SECRET;
+    process.env.NEXTAUTH_SECRET = "unit-brain-secret";
+    const noFallback = authenticateManager(
+      OPERATOR_EMAIL,
+      "hueytown-managers",
+      roster
+    );
+    assert(
+      noFallback.code === "password-not-configured",
+      "login requires SECOND_BRAIN_SECRET; NEXTAUTH_SECRET is not a fallback"
+    );
+    assert(
+      readManagerSession(token) === null,
+      "session HMAC must not accept NEXTAUTH_SECRET even when it matches the old key"
+    );
   } finally {
     if (prevPassword === undefined) delete process.env.SECOND_BRAIN_PASSWORD;
     else process.env.SECOND_BRAIN_PASSWORD = prevPassword;
-    if (prevSecret === undefined) delete process.env.NEXTAUTH_SECRET;
-    else process.env.NEXTAUTH_SECRET = prevSecret;
+    if (prevBrainSecret === undefined) delete process.env.SECOND_BRAIN_SECRET;
+    else process.env.SECOND_BRAIN_SECRET = prevBrainSecret;
+    if (prevNextSecret === undefined) delete process.env.NEXTAUTH_SECRET;
+    else process.env.NEXTAUTH_SECRET = prevNextSecret;
   }
-  console.log("ok manager dashboard auth");
+  console.log("ok manager dashboard auth does not leak password correctness");
 }
 
 function testDoesNotTreatPlaceholderCatalogAsLive() {

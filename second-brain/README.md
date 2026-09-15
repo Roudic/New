@@ -2,7 +2,7 @@
 
 Agentic OS for Chick-fil-A Hueytown **managers**. This is **not** JoltCheck employee login.
 
-**Dashboard:** `/brain` (sign-in at `/brain/login`). Manager password is `SECOND_BRAIN_PASSWORD`. JoltCheck accounts cannot use it.
+**Dashboard:** `/brain` (sign-in at `/brain/login`). Shared `SECOND_BRAIN_PASSWORD` plus allowlist — not 4 Google identities until Drive is wired. Do not pre-fill Joshua’s email. Login errors do not reveal whether the password was correct (unknown / store-team / wrong password look the same). A granted pending seat can get `pending-seat` only after the password matches. Session HMAC requires `SECOND_BRAIN_SECRET` (not `NEXTAUTH_SECRET`). Cookie path is `/brain`.
 
 **Drive is not wired yet.** The shared folder id is `null`. `second-brain/drive-catalog.example.json` is a **fixture** (simulated IDs that 404). The CLI does **not** seed it into the live store. Filing is local JSON / the `SecondBrainState` table. `confirm-share` does **not** activate seats: a folder id in JSON is not proof of Drive share. Joshua is the operator exception.
 

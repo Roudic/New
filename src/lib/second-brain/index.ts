@@ -47,6 +47,8 @@ export {
   signManagerSession,
   readManagerSession,
   MANAGER_COOKIE,
+  MANAGER_COOKIE_PATH,
+  INVALID_CREDENTIALS_REASON,
 } from "./manager-auth";
 export {
   captureNote,

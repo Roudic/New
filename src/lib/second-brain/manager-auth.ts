@@ -1,13 +1,17 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { authorize, isStoreTeamEmail, normalizeEmail } from "./access";
-import type { AccessDecision, AccessRoster } from "./types";
+import { authorize, normalizeEmail } from "./access";
+import type { AccessRoster } from "./types";
 
 export const MANAGER_COOKIE = "second_brain_manager";
+export const MANAGER_COOKIE_PATH = "/brain";
+export const INVALID_CREDENTIALS_REASON = "Invalid email or password.";
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type ManagerLoginCode =
-  | AccessDecision["code"]
+  | "ok"
+  | "empty-email"
   | "invalid-credentials"
+  | "pending-seat"
   | "password-not-configured";
 
 export interface ManagerLoginResult {
@@ -18,11 +22,7 @@ export interface ManagerLoginResult {
 }
 
 function secret(): string {
-  return (
-    process.env.SECOND_BRAIN_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    ""
-  );
+  return (process.env.SECOND_BRAIN_SECRET ?? "").trim();
 }
 
 function configuredPassword(): string {
@@ -44,6 +44,15 @@ function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
+function invalidCredentials(email: string): ManagerLoginResult {
+  return {
+    ok: false,
+    email,
+    code: "invalid-credentials",
+    reason: INVALID_CREDENTIALS_REASON,
+  };
+}
+
 export function authenticateManager(
   email: string,
   password: string,
@@ -59,16 +68,6 @@ export function authenticateManager(
     };
   }
 
-  if (isStoreTeamEmail(normalized)) {
-    return {
-      ok: false,
-      email: normalized,
-      code: "store-team-denied",
-      reason:
-        "Store team and JoltCheck accounts cannot use the manager dashboard.",
-    };
-  }
-
   const expected = configuredPassword();
   if (!expected || !secret()) {
     return {
@@ -80,30 +79,29 @@ export function authenticateManager(
   }
 
   if (!safeEqual(password, expected)) {
-    return {
-      ok: false,
-      email: normalized,
-      code: "invalid-credentials",
-      reason: "Invalid email or password.",
-    };
+    return invalidCredentials(normalized);
   }
 
   const access = authorize(normalized, roster, "capture");
-  if (!access.ok) {
+  if (access.ok) {
+    return {
+      ok: true,
+      email: access.email,
+      code: "ok",
+      reason: "Active manager",
+    };
+  }
+
+  if (access.code === "pending-seat") {
     return {
       ok: false,
       email: normalized,
-      code: access.code,
+      code: "pending-seat",
       reason: access.reason,
     };
   }
 
-  return {
-    ok: true,
-    email: access.email,
-    code: "ok",
-    reason: "Active manager",
-  };
+  return invalidCredentials(normalized);
 }
 
 export function signManagerSession(email: string, now = Date.now()): string {
@@ -134,4 +132,14 @@ export function readManagerSession(
   } catch {
     return null;
   }
+}
+
+export function managerCookieOptions(maxAge: number, path = MANAGER_COOKIE_PATH) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    path,
+    maxAge,
+    secure: process.env.NODE_ENV === "production",
+  };
 }
