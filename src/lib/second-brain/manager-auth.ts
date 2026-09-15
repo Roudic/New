@@ -11,7 +11,6 @@ export type ManagerLoginCode =
   | "ok"
   | "empty-email"
   | "invalid-credentials"
-  | "pending-seat"
   | "password-not-configured";
 
 export interface ManagerLoginResult {
@@ -89,15 +88,6 @@ export function authenticateManager(
       email: access.email,
       code: "ok",
       reason: "Active manager",
-    };
-  }
-
-  if (access.code === "pending-seat") {
-    return {
-      ok: false,
-      email: normalized,
-      code: "pending-seat",
-      reason: access.reason,
     };
   }
 

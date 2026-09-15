@@ -642,19 +642,35 @@ function testManagerDashboardAuth() {
     });
     assert(granted.ok, "grant pending manager for login leak test");
     if (!granted.ok) return;
-    assertInvalidCredentials(
-      authenticateManager("manager.two@example.com", "wrong-password", granted.roster),
-      "pending seat wrong password"
+    const pendingWrong = authenticateManager(
+      "manager.two@example.com",
+      "wrong-password",
+      granted.roster
     );
-    const pendingOk = authenticateManager(
+    const pendingCorrect = authenticateManager(
       "manager.two@example.com",
       "hueytown-managers",
       granted.roster
     );
-    assert(!pendingOk.ok, "pending seat cannot sign in");
+    const unknownCorrect = authenticateManager(
+      "x@y.com",
+      "hueytown-managers",
+      granted.roster
+    );
+    assertInvalidCredentials(pendingWrong, "pending seat wrong password");
+    assertInvalidCredentials(
+      pendingCorrect,
+      "pending seat correct password must not prove the password or the seat"
+    );
     assert(
-      pendingOk.code === "pending-seat",
-      "pending seat is distinct only after the password matches"
+      pendingCorrect.code === unknownCorrect.code &&
+        pendingCorrect.reason === unknownCorrect.reason,
+      "pending+correct password must match unknown+correct password"
+    );
+    assert(
+      authorize("manager.two@example.com", granted.roster, "capture").code ===
+        "pending-seat",
+      "authorize still holds the seat pending until live Drive ACL"
     );
 
     delete process.env.SECOND_BRAIN_SECRET;

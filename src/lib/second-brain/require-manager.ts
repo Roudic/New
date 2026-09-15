@@ -11,12 +11,7 @@ import type { AccessAction } from "@/lib/second-brain/types";
 import type { BrainStore } from "@/lib/second-brain/store";
 
 export function loginFailed(result: ManagerLoginResult): NextResponse {
-  const status =
-    result.code === "pending-seat"
-      ? 403
-      : result.code === "password-not-configured"
-        ? 503
-        : 401;
+  const status = result.code === "password-not-configured" ? 503 : 401;
   return NextResponse.json(
     { error: result.reason, code: result.code },
     { status }
