@@ -48,7 +48,6 @@
     "npx tsx scripts/second-brain.ts grant --actor vinziant@gmail.com --name \"Full Name\" --email \"name@example.com\"",
     "Share the Drive folder \"CFA Hueytown Managers — Second Brain\" with that same Google account as Editor.",
     "Do not use Anyone with the link, the whole store, or a crew/team group. Restricted to the 4 manager accounts only.",
-    "After the live Drive folder id is set and that person is an Editor, confirm: npx tsx scripts/second-brain.ts confirm-share --actor vinziant@gmail.com --email \"name@example.com\"",
-    "confirm-share fails closed while the Drive folder id is null — do not activate a seat on grant alone."
+    "confirm-share cannot activate a seat until live Drive ACL is wired. A folder id in JSON is not proof of share."
   ]
 }

@@ -26,9 +26,11 @@ export const PENDING_ACCESS_STEPS = [
   "npx tsx scripts/second-brain.ts grant --actor vinziant@gmail.com --name \"Full Name\" --email \"name@example.com\"",
   "Share the Drive folder \"CFA Hueytown Managers — Second Brain\" with that same Google account as Editor.",
   "Do not use Anyone with the link, the whole store, or a crew/team group. Restricted to the 4 manager accounts only.",
-  "After the live Drive folder id is set and that person is an Editor, confirm: npx tsx scripts/second-brain.ts confirm-share --actor vinziant@gmail.com --email \"name@example.com\"",
-  "confirm-share fails closed while the Drive folder id is null — do not activate a seat on grant alone.",
+  "confirm-share cannot activate a seat until live Drive ACL is wired. A folder id in JSON is not proof of share.",
 ] as const;
+
+export const DRIVE_ACL_UNWIRED =
+  "Live Drive ACL is not wired. A Drive folder id in JSON is not proof of share. Seats stay pending except Joshua (operator exception).";
 
 export function normalizeEmail(email: string | null | undefined): string {
   return (email ?? "").trim().toLowerCase();
@@ -106,6 +108,17 @@ export function activeManagerEmails(roster: AccessRoster): string[] {
     }
   }
   return emails;
+}
+
+/** Granted seats (active or pending-invite) with an email. Not store-team. */
+export function isGrantedManagerEmail(
+  roster: AccessRoster,
+  email: string | null | undefined
+): boolean {
+  const normalized = normalizeEmail(email);
+  if (!normalized || isStoreTeamEmail(normalized)) return false;
+  const seat = findManagerSeat(roster, normalized);
+  return Boolean(seat?.email);
 }
 
 export function authorize(
@@ -269,49 +282,12 @@ export function confirmDriveShare(
     return { ok: false, error: actor.reason };
   }
 
-  if (!roster.driveFolder.id) {
-    return {
-      ok: false,
-      error:
-        "Drive folder id is not configured. Cannot confirm a live share. Fail closed until the manager folder exists in Drive.",
-    };
-  }
-
   const email = normalizeEmail(managerEmail);
-  const seatIndex = roster.managers.findIndex(
-    (seat) => seat.email !== null && normalizeEmail(seat.email) === email
-  );
-  if (seatIndex === -1) {
+  if (!isGrantedManagerEmail(roster, email)) {
     return { ok: false, error: "That email does not have a granted manager seat." };
   }
 
-  const seat = roster.managers[seatIndex];
-  if (!seat.name || !seat.email) {
-    return { ok: false, error: "Grant the seat (name + email) before confirming Drive share." };
-  }
-
-  const nextManagers = roster.managers.map((item, index) =>
-    index === seatIndex
-      ? {
-          ...item,
-          status: "active" as const,
-          driveShareConfirmed: true,
-        }
-      : item
-  ) as AccessRoster["managers"];
-
-  const next: AccessRoster = {
-    ...roster,
-    managers: nextManagers,
-    driveFolder: {
-      ...roster.driveFolder,
-      visibility: "restricted",
-      anyoneWithLink: false,
-      shareWithStoreTeam: false,
-    },
-  };
-
-  return { ok: true, roster: next, seat: next.managers[seatIndex] };
+  return { ok: false, error: DRIVE_ACL_UNWIRED };
 }
 
 export function driveSharePlan(roster: AccessRoster): {
@@ -348,7 +324,7 @@ export function driveSharePlan(roster: AccessRoster): {
   return {
     folderName: roster.driveFolder.name,
     folderId: roster.driveFolder.id,
-    live: Boolean(roster.driveFolder.id),
+    live: false,
     anyoneWithLink: false,
     shareWithStoreTeam: false,
     shareWith,

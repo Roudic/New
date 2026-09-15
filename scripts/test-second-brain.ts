@@ -366,29 +366,38 @@ function testGrantBeforeShare() {
   const blocked = confirmDriveShare(roster, OPERATOR_EMAIL, "manager.two@example.com");
   assert(!blocked.ok, "confirm-share fails closed without a Drive folder id");
 
-  roster = {
+  const planted = {
     ...roster,
     driveFolder: { ...roster.driveFolder, id: "1A2b3C4d5E6f7G8h9I0jKLMNO-pqrs" },
   };
-  const confirmed = confirmDriveShare(roster, OPERATOR_EMAIL, "manager.two@example.com");
-  assert(confirmed.ok, "confirm-share works once folder id exists");
-  if (!confirmed.ok) return;
-  assert(confirmed.seat.status === "active", "seat activates after confirm");
-  assert(authorize("manager.two@example.com", confirmed.roster, "capture").ok, "can capture after confirm");
+  const plantedConfirm = confirmDriveShare(
+    planted,
+    OPERATOR_EMAIL,
+    "manager.two@example.com"
+  );
+  assert(!plantedConfirm.ok, "planted folder id is not proof of Drive share");
+  assert(
+    plantedConfirm.ok === false && plantedConfirm.error.includes("Live Drive ACL"),
+    "error names unwired ACL"
+  );
+  assert(
+    authorize("manager.two@example.com", planted, "capture").code === "pending-seat",
+    "seat stays pending after planted id"
+  );
 
-  const dup = grantManagerSeat(confirmed.roster, OPERATOR_EMAIL, {
+  const dup = grantManagerSeat(roster, OPERATOR_EMAIL, {
     name: "Manager Two",
     email: "manager.two@example.com",
   });
   assert(!dup.ok, "duplicate email rejected");
 
-  const crew = grantManagerSeat(confirmed.roster, OPERATOR_EMAIL, {
+  const crew = grantManagerSeat(roster, OPERATOR_EMAIL, {
     name: "Alex",
     email: "alex@store.com",
   });
   assert(!crew.ok, "cannot grant crew");
 
-  let filling = confirmed.roster;
+  let filling = roster;
   const third = grantManagerSeat(filling, OPERATOR_EMAIL, {
     name: "Manager Three",
     email: "manager.three@example.com",
@@ -407,13 +416,16 @@ function testGrantBeforeShare() {
   });
   assert(!fifth.ok, "cannot expand past 4 managers");
 
-  const plan = driveSharePlan(filling);
+  const plan = driveSharePlan({
+    ...filling,
+    driveFolder: { ...filling.driveFolder, id: "1A2b3C4d5E6f7G8h9I0jKLMNO-pqrs" },
+  });
   assert(plan.anyoneWithLink === false, "no anyone-with-link");
   assert(plan.shareWithStoreTeam === false, "no store team share");
-  assert(plan.shareWith.length === 2, "only confirmed managers are shareWith");
-  assert(plan.awaitingDriveShare.length === 2, "unconfirmed grants await Drive share");
-  assert(plan.live === true, "plan.live follows folder id");
-  console.log("ok grant stays pending until Drive share confirm");
+  assert(plan.shareWith.length === 1, "only Joshua is active; planted id does not confirm others");
+  assert(plan.awaitingDriveShare.length === 3, "unconfirmed grants await Drive share");
+  assert(plan.live === false, "plan.live stays false without live Drive ACL");
+  console.log("ok grant stays pending; planted folder id is not share proof");
 }
 
 function testInboxDropAndProcess() {
@@ -477,25 +489,75 @@ OTHER_MANAGER_BODY
 
   const results = processInbox(store, OPERATOR_EMAIL);
   const discarded = results.filter((result) => result.discarded);
-  assert(discarded.length === 2, "mismatched claimed actors are discarded");
+  assert(discarded.length === 2, "unknown/spoofed claimed actors are discarded");
   assert(
     discarded.some((result) => result.discarded?.claimedActor === "alex@store.com"),
     "crew spoof discarded"
   );
   assert(
     discarded.some((result) => result.discarded?.claimedActor === "manager.two@example.com"),
-    "other-manager spoof discarded"
+    "ungranted email discarded"
   );
 
   const notes = readNotes(store, OPERATOR_EMAIL);
   const blob = JSON.stringify(notes);
   assert(!blob.includes("SECRET_CREW_BODY"), "crew body not persisted");
-  assert(!blob.includes("OTHER_MANAGER_BODY"), "mismatched manager body not persisted");
+  assert(!blob.includes("OTHER_MANAGER_BODY"), "ungranted manager body not persisted");
 
   const matching = results.find((result) => result.note?.title === "Spoof Joshua");
   assert(matching?.note?.actorEmail === OPERATOR_EMAIL, "matching claim still uses processor");
   assert(matching?.note?.status === "needs-review" || matching?.note?.status === "filed", "matching drop is processed");
   console.log("ok spoofed drops discarded");
+}
+
+function testGrantedManagerInboxDrop() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "second-brain-"));
+  const store = new FileBrainStore(root);
+  const granted = grantManagerSeat(defaultRoster(), OPERATOR_EMAIL, {
+    name: "Manager Two",
+    email: "manager.two@example.com",
+  });
+  assert(granted.ok, "grant manager two");
+  if (!granted.ok) return;
+  store.saveRoster(granted.roster);
+
+  fs.writeFileSync(
+    path.join(root, "inbox", "two-sysco.md"),
+    `---
+actor: manager.two@example.com
+title: Sysco late
+---
+Sysco truck was late and the invoice was shorted. Need a credit memo.
+`
+  );
+  fs.writeFileSync(
+    path.join(root, "inbox", "unclaimed.md"),
+    `---
+title: Unclaimed sysco
+---
+Sysco shorted bread, send the credit memo.
+`
+  );
+
+  const results = processInbox(store, OPERATOR_EMAIL);
+  assert(
+    !results.some((result) => result.discarded),
+    "granted-manager drop must not be discarded"
+  );
+
+  const two = results.find((result) => result.note?.title === "Sysco late");
+  assert(two?.note?.actorEmail === "manager.two@example.com", "attributed to granted manager");
+  assert(two?.note?.status === "filed", "pending manager drop is filed, not deleted");
+  assert(two?.note?.body.includes("invoice was shorted"), "body kept");
+
+  const unclaimed = results.find((result) => result.note?.title === "Unclaimed sysco");
+  assert(unclaimed?.note?.actorEmail === OPERATOR_EMAIL, "unclaimed drop stays the processor");
+
+  const notes = readNotes(store, OPERATOR_EMAIL);
+  const blob = JSON.stringify(notes);
+  assert(blob.includes("invoice was shorted"), "granted manager body readable");
+  assert(blob.includes("Sysco shorted bread"), "unclaimed body readable");
+  console.log("ok granted manager inbox drop kept");
 }
 
 function testVerifyBlocksLeakedDriveLink() {
@@ -570,6 +632,7 @@ function main() {
   testGrantBeforeShare();
   testInboxDropAndProcess();
   testSpoofedDrops();
+  testGrantedManagerInboxDrop();
   testVerifyBlocksLeakedDriveLink();
   testDoesNotTreatPlaceholderCatalogAsLive();
   console.log("ok second-brain phase 1");

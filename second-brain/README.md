@@ -2,7 +2,7 @@
 
 Agentic OS for Chick-fil-A Hueytown **managers**. There is **no custom app UI** and this is **not** JoltCheck employee login.
 
-**Drive is not wired yet.** The shared folder id is `null`. `second-brain/drive-catalog.example.json` is a **fixture** (simulated IDs that 404). The CLI does **not** seed it into the live store. Filing is local JSON under `data/second-brain/`. `confirm-share` fails closed until a real Drive folder id exists.
+**Drive is not wired yet.** The shared folder id is `null`. `second-brain/drive-catalog.example.json` is a **fixture** (simulated IDs that 404). The CLI does **not** seed it into the live store. Filing is local JSON under `data/second-brain/`. `confirm-share` does **not** activate seats: a folder id in JSON is not proof of Drive share. Joshua is the operator exception.
 
 ## Who can use it
 
@@ -17,7 +17,7 @@ Exactly **4 manager seats**:
 
 Store team / crew / JoltCheck accounts (`alex@store.com`, `sam@store.com`, `admin@joltcheck.com`, and anyone else not on this list) **cannot** capture or read.
 
-`--actor` is **required**. It is never defaulted to Joshua. Inbox `actor:` frontmatter is **not** identity: a claimed email that does not match the authenticated processor is discarded, and the body is not stored.
+`--actor` is **required**. It is never defaulted to Joshua. Inbox `actor:` is allowed when it matches a **granted** roster email (active or pending). Unknown / store-team claims are discarded and the body is not stored. Unclaimed drops are stored as the processor.
 
 ## How the other 3 managers get access
 
@@ -32,15 +32,9 @@ npx tsx scripts/second-brain.ts grant \
 ```
 
 3. Share the Drive folder **CFA Hueytown Managers — Second Brain** with that Google account as **Editor**. Do **not** use Anyone with the link or the store team.
-4. After a **live** Drive folder id is configured, confirm:
+4. `confirm-share` cannot activate them until **live Drive ACL** exists. Planting a folder id in JSON does not count.
 
-```bash
-npx tsx scripts/second-brain.ts confirm-share \
-  --actor vinziant@gmail.com \
-  --email "name@example.com"
-```
-
-Until step 4, they cannot capture or read.
+Until live ACL is wired, they cannot CLI-capture or read. They **can** have inbox drops attributed to their granted email when an active manager runs `process`.
 
 ## Capture → classify → file → verify
 

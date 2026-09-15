@@ -56,8 +56,8 @@ Usage:
   npx tsx scripts/second-brain.ts grant --actor EMAIL --name "Full Name" --email name@example.com
   npx tsx scripts/second-brain.ts confirm-share --actor EMAIL --email name@example.com
 
-Inbox drops: data/second-brain/inbox/*.md. Frontmatter actor is not identity.
-Drive is not wired yet (folder id is null). This CLI will not seed placeholder Drive file IDs.
+Inbox drops: data/second-brain/inbox/*.md. Claimed actor must be a granted roster email (or omitted = processor).
+Drive is not wired. confirm-share will not activate seats; a folder id in JSON is not proof of share.
 `;
 }
 
@@ -109,8 +109,8 @@ async function main() {
         live: Boolean(store.getRoster().driveFolder.id),
         catalogFiles: store.getCatalog().length,
         note: store.getRoster().driveFolder.id
-          ? "Drive folder id is set"
-          : "Drive folder id is null. Local filing only. Placeholder catalog is not loaded.",
+          ? "Drive folder id is set in JSON but live ACL is not wired. Do not treat this as a confirmed share."
+          : "Drive folder id is null. Local filing only. Placeholder catalog is not loaded. confirm-share will not activate seats.",
       },
       counts: {
         inbox: notes.filter((note) => note.status === "inbox").length,
@@ -143,7 +143,7 @@ async function main() {
     printJson({
       granted: result.seat,
       sharePlan: driveSharePlan(result.roster),
-      next: `Seat stays pending-invite. Share the Drive folder with ${result.seat.email} as Editor, then confirm-share. confirm-share fails until a live Drive folder id is set.`,
+      next: `Seat stays pending-invite. Live Drive ACL is not wired — confirm-share will not activate this seat. A folder id in JSON is not proof of share.`,
     });
     return;
   }

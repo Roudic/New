@@ -1,4 +1,4 @@
-import { authorize } from "./access";
+import { isGrantedManagerEmail } from "./access";
 import { reviewClassify, VERIFY_MIN_CONFIDENCE } from "./classify";
 import { destinationMatchesCategory } from "./file";
 import { isLinkableDriveFile, isSimulatedDriveFile } from "./link";
@@ -32,7 +32,7 @@ export function verifyFiling(input: {
   const secondScorer = reviewClassify(note.title, note.body);
   const catalogById = new Map(catalog.map((file) => [file.id, file]));
 
-  const access = authorize(note.actorEmail, roster, "capture");
+  const accessOk = isGrantedManagerEmail(roster, note.actorEmail);
   const body = `${note.title} ${note.body}`.trim();
 
   const categoryAgrees = secondScorer.category === decision.category;
@@ -62,10 +62,10 @@ export function verifyFiling(input: {
   const checks: VerificationCheck[] = [
     check(
       "actor-is-manager",
-      access.ok,
-      access.ok
-        ? `actor ${access.email} is an active manager`
-        : access.reason
+      accessOk,
+      accessOk
+        ? `actor ${note.actorEmail} is a granted manager`
+        : "actor is not a granted manager on the 4-seat roster"
     ),
     check(
       "body-not-empty",

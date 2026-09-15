@@ -12,7 +12,10 @@ export {
   driveSharePlan,
   normalizeEmail,
   isStoreTeamEmail,
+  isGrantedManagerEmail,
+  findManagerSeat,
   activeManagerEmails,
+  DRIVE_ACL_UNWIRED,
 } from "./access";
 export { classify, reviewClassify, VERIFY_MIN_CONFIDENCE } from "./classify";
 export {
