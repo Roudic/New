@@ -56,6 +56,13 @@ export {
   processInbox,
   readNotes,
 } from "./pipeline";
+export {
+  buildBrainGraph,
+  shouldOverlayMapDemo,
+  MAP_DEMO_NOTES,
+  MAP_CATEGORY_COLORS,
+} from "./graph";
+export type { BrainGraph, BrainGraphNode, BrainGraphLink } from "./graph";
 export type {
   AccessRoster,
   CapturedNote,

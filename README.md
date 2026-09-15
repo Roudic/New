@@ -4,7 +4,7 @@ Operations checklist app for teams — login, admin assignments, checklist build
 
 > **Also in this repo:** [Drive-Thru Pulse](./drive-thru-pulse/) — a tap-timer app for measuring drive-thru window departure timing at CFA #03339. See [`drive-thru-pulse/README.md`](./drive-thru-pulse/README.md) for setup.
 >
-> **Second Brain OPs** (Hueytown managers only): dashboard at `/brain`. Not JoltCheck crew login. Drive is the intended file layer but is **not wired**.
+> **Second Brain OPs** (Hueytown managers only): dashboard at `/brain`, 3D map at `/brain/map`. Not JoltCheck crew login. Drive is the intended file layer but is **not wired**.
 
 The app **automatically uses a cloud database** when `DATABASE_URL` is configured (Turso on Vercel, SQLite locally). Without a database, it falls back to **localStorage demo mode** on that device.
 

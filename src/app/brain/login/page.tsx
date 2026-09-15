@@ -35,7 +35,9 @@ export default function BrainLoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-background bg-hero-gradient">
+      <div className="pointer-events-none fixed inset-0 bg-grid-pattern bg-grid opacity-40" />
+      <div className="relative flex min-h-screen items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         <div className="glass-panel overflow-hidden">
           <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-8 py-8 text-white">
@@ -100,6 +102,7 @@ export default function BrainLoginPage() {
             </button>
           </form>
         </div>
+      </div>
       </div>
     </div>
   );

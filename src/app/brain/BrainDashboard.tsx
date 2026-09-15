@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, Inbox, LogOut, ShieldAlert, Sparkles } from "lucide-react";
+import { Brain, Inbox, LogOut, Network, ShieldAlert, Sparkles } from "lucide-react";
 
 interface Seat {
   seat: number;
@@ -168,7 +169,9 @@ export default function BrainDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-16 pt-[calc(1rem+env(safe-area-inset-top))] md:pb-10">
+    <div className="min-h-screen bg-background bg-hero-gradient">
+      <div className="pointer-events-none fixed inset-0 bg-grid-pattern bg-grid opacity-40" />
+      <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-[calc(1rem+env(safe-area-inset-top))] md:pb-10">
       <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white">
@@ -182,10 +185,16 @@ export default function BrainDashboard() {
             <p className="text-sm text-slate-600">{state.actor}</p>
           </div>
         </div>
-        <button type="button" onClick={() => void logout()} className="btn-secondary py-2">
-          <LogOut className="h-4 w-4" />
-          Sign out
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/brain/map" id="brain-open-map" className="btn-primary py-2">
+            <Network className="h-4 w-4" />
+            3D brain map
+          </Link>
+          <button type="button" onClick={() => void logout()} className="btn-secondary py-2">
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </div>
       </header>
 
       <div
@@ -287,6 +296,7 @@ export default function BrainDashboard() {
           notes={state.filed}
           empty="Nothing filed yet."
         />
+      </div>
       </div>
     </div>
   );

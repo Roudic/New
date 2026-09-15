@@ -6,6 +6,7 @@ import {
   authenticateManager,
   authorize,
   INVALID_CREDENTIALS_REASON,
+  buildBrainGraph,
   captureNote,
   classify,
   commitVerified,
@@ -19,6 +20,7 @@ import {
   isSimulatedDriveFile,
   linkNote,
   MemoryBrainStore,
+  MAP_DEMO_NOTES,
   OPERATOR_EMAIL,
   processInbox,
   processNote,
@@ -730,6 +732,132 @@ function testDoesNotTreatPlaceholderCatalogAsLive() {
   console.log("ok placeholder Drive IDs fail closed");
 }
 
+function testBrainMapGraph() {
+  const empty = buildBrainGraph([], []);
+  assert(empty.demo, "empty store overlays demo notes");
+  assert(empty.nodes.length >= 6, "demo has a few note nodes");
+  assert(empty.driveNodeCount === 0, "demo graph has no Drive nodes");
+  assert(
+    empty.nodes.every((node) => node.kind === "note"),
+    "demo nodes are notes only"
+  );
+  assert(empty.links.length >= 3, "demo notes are linked to each other");
+  assert(
+    empty.links.every((link) => link.kind === "note"),
+    "demo edges are note↔note"
+  );
+  const groups: Record<string, true> = {};
+  for (const node of empty.nodes) {
+    groups[node.group] = true;
+  }
+  assert(groups.vendor && groups.training && groups.incidents && groups["shift-notes"], "categories group demo nodes");
+
+  const simulatedNote: CapturedNote = {
+    ...MAP_DEMO_NOTES[0],
+    id: "real-sysco",
+    links: [
+      {
+        type: "drive-file",
+        targetId: "drive-vendor-sysco",
+        title: "Sysco order guide",
+        url: "https://drive.google.com/file/d/drive-vendor-sysco/view",
+        score: 9,
+        why: "simulated",
+      },
+    ],
+  };
+  const simulatedGraph = buildBrainGraph([simulatedNote], simulatedCatalog());
+  assert(simulatedGraph.driveNodeCount === 0, "simulated Drive catalog does not appear on the map");
+  assert(
+    simulatedGraph.nodes.every((node) => node.kind !== "drive"),
+    "no Drive nodes from placeholder ids"
+  );
+
+  const liveId = "1bKpxLqR8nM2vT9cW4yH7sF3dXa0Qzz";
+  const liveFile: DriveFile = {
+    id: liveId,
+    name: "Live Sysco order guide",
+    webViewLink: `https://drive.google.com/file/d/${liveId}/view`,
+    folder: "Vendors",
+    keywords: ["sysco"],
+    managerShared: true,
+    visibility: "managers-only",
+  };
+  const liveNote: CapturedNote = {
+    ...MAP_DEMO_NOTES[0],
+    id: "live-sysco-note",
+    status: "filed",
+    category: "vendor",
+    links: [
+      {
+        type: "drive-file",
+        targetId: liveId,
+        title: "Live Sysco order guide",
+        url: liveFile.webViewLink,
+        score: 8,
+        why: "live catalog",
+      },
+      {
+        type: "note",
+        targetId: "live-sysco-sibling",
+        title: "Sibling",
+        score: 3,
+        why: "related",
+      },
+    ],
+  };
+  const sibling: CapturedNote = {
+    ...MAP_DEMO_NOTES[1],
+    id: "live-sysco-sibling",
+    status: "filed",
+    category: "vendor",
+    links: [
+      {
+        type: "note",
+        targetId: "live-sysco-note",
+        title: "Live note",
+        score: 3,
+        why: "related",
+      },
+    ],
+  };
+  const third: CapturedNote = {
+    ...MAP_DEMO_NOTES[2],
+    id: "live-training-note",
+    status: "filed",
+    category: "training",
+    links: [
+      {
+        type: "note",
+        targetId: "live-sysco-sibling",
+        title: "Sibling",
+        score: 2,
+        why: "related",
+      },
+    ],
+  };
+  const liveGraph = buildBrainGraph([liveNote, sibling, third], [liveFile]);
+  assert(!liveGraph.demo, "enough real linked notes skip the demo overlay");
+  assert(liveGraph.driveNodeCount === 1, "live catalog file can appear");
+  assert(
+    liveGraph.nodes.some((node) => node.id === liveId && node.kind === "drive"),
+    "live Drive node id matches the catalog file"
+  );
+  assert(
+    liveGraph.links.some(
+      (link) =>
+        link.kind === "drive" &&
+        (link.source === liveId || link.target === liveId)
+    ),
+    "note↔Drive edge only for the live file"
+  );
+  assert(
+    !liveGraph.nodes.some((node) => node.id.indexOf("map-demo-") === 0),
+    "demo overlay omitted when real graph is dense enough"
+  );
+  console.log("ok 3D brain map graph (no fake Drive)");
+}
+
 function main() {
   testClassify();
   testFileAndVerify();
@@ -746,6 +874,7 @@ function main() {
   testVerifyBlocksLeakedDriveLink();
   testDoesNotTreatPlaceholderCatalogAsLive();
   testManagerDashboardAuth();
+  testBrainMapGraph();
   console.log("ok second-brain phase 1");
 }
 
