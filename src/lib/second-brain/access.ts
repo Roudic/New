@@ -101,7 +101,7 @@ export function activeManagerEmails(roster: AccessRoster): string[] {
 export function authorize(
   email: string | null | undefined,
   roster: AccessRoster,
-  _action: AccessAction
+  action: AccessAction
 ): AccessDecision {
   const normalized = normalizeEmail(email);
   if (!normalized) {
@@ -109,7 +109,7 @@ export function authorize(
       ok: false,
       email: "",
       code: "empty-email",
-      reason: "An email is required. Second Brain access is manager-only.",
+      reason: `An email is required to ${action}. Second Brain access is manager-only.`,
     };
   }
 
@@ -118,8 +118,7 @@ export function authorize(
       ok: false,
       email: normalized,
       code: "store-team-denied",
-      reason:
-        "Store team and JoltCheck employee/admin accounts cannot use Second Brain. Manager-only (4 seats).",
+      reason: `Store team and JoltCheck employee/admin accounts cannot ${action} on Second Brain. Manager-only (4 seats).`,
     };
   }
 
@@ -158,8 +157,7 @@ export function authorize(
       ok: false,
       email: normalized,
       code: "pending-seat",
-      reason:
-        "This manager seat is pending invite. Finish grant + Drive share before they can capture or read.",
+      reason: `This manager seat is pending invite. Finish grant + Drive share before they can ${action}.`,
       seat,
     };
   }
@@ -168,7 +166,7 @@ export function authorize(
     ok: true,
     email: normalized,
     code: "ok",
-    reason: "Active manager",
+    reason: `Active manager (${action})`,
     seat,
   };
 }
