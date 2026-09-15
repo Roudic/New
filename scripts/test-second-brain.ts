@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import {
   applyFiling,
+  authenticateManager,
   authorize,
   captureNote,
   classify,
@@ -21,8 +22,10 @@ import {
   processInbox,
   processNote,
   proposeFiling,
+  readManagerSession,
   readNotes,
   reviewClassify,
+  signManagerSession,
   STORE_TEAM_DENYLIST,
   verifyFiling,
   type CapturedNote,
@@ -589,6 +592,35 @@ function testVerifyBlocksLeakedDriveLink() {
   console.log("ok verify blocks store-team Drive link");
 }
 
+function testManagerDashboardAuth() {
+  const prevPassword = process.env.SECOND_BRAIN_PASSWORD;
+  const prevSecret = process.env.NEXTAUTH_SECRET;
+  process.env.SECOND_BRAIN_PASSWORD = "hueytown-managers";
+  process.env.NEXTAUTH_SECRET = "unit-test-secret";
+  try {
+    const roster = defaultRoster();
+    const ok = authenticateManager(OPERATOR_EMAIL, "hueytown-managers", roster);
+    assert(ok.ok && ok.email === OPERATOR_EMAIL, "Joshua can sign in");
+    const token = signManagerSession(ok.email);
+    assert(readManagerSession(token) === OPERATOR_EMAIL, "session round-trips");
+
+    const crew = authenticateManager("alex@store.com", "hueytown-managers", roster);
+    assert(crew.code === "store-team-denied", "crew denied even with manager password");
+    const admin = authenticateManager("admin@joltcheck.com", "hueytown-managers", roster);
+    assert(admin.code === "store-team-denied", "JoltCheck admin denied");
+    const unknown = authenticateManager("random@elsewhere.com", "hueytown-managers", roster);
+    assert(!unknown.ok, "unknown email denied");
+    const wrong = authenticateManager(OPERATOR_EMAIL, "admin123", roster);
+    assert(wrong.code === "invalid-credentials", "JoltCheck password is not the manager password");
+  } finally {
+    if (prevPassword === undefined) delete process.env.SECOND_BRAIN_PASSWORD;
+    else process.env.SECOND_BRAIN_PASSWORD = prevPassword;
+    if (prevSecret === undefined) delete process.env.NEXTAUTH_SECRET;
+    else process.env.NEXTAUTH_SECRET = prevSecret;
+  }
+  console.log("ok manager dashboard auth");
+}
+
 function testDoesNotTreatPlaceholderCatalogAsLive() {
   const store = storeWithCatalog();
   const note = captureNote(store, {
@@ -635,6 +667,7 @@ function main() {
   testGrantedManagerInboxDrop();
   testVerifyBlocksLeakedDriveLink();
   testDoesNotTreatPlaceholderCatalogAsLive();
+  testManagerDashboardAuth();
   console.log("ok second-brain phase 1");
 }
 

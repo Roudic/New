@@ -4,7 +4,7 @@ Operations checklist app for teams — login, admin assignments, checklist build
 
 > **Also in this repo:** [Drive-Thru Pulse](./drive-thru-pulse/) — a tap-timer app for measuring drive-thru window departure timing at CFA #03339. See [`drive-thru-pulse/README.md`](./drive-thru-pulse/README.md) for setup.
 >
-> **Second Brain OPs** (Hueytown managers only): [`second-brain/`](./second-brain/) is the agentic capture → classify → file → verify loop. No extra app UI. Drive is the intended file layer but is **not wired** on this branch. JoltCheck employee logins cannot access it.
+> **Second Brain OPs** (Hueytown managers only): dashboard at `/brain`. Not JoltCheck crew login. Drive is the intended file layer but is **not wired**.
 
 The app **automatically uses a cloud database** when `DATABASE_URL` is configured (Turso on Vercel, SQLite locally). Without a database, it falls back to **localStorage demo mode** on that device.
 
@@ -102,14 +102,14 @@ Templates live in [`public/scorecard/`](./public/scorecard/). `npm run test:scor
 
 ## Second Brain OPs (managers only)
 
-Shared capture inbox for the 4 Chick-fil-A Hueytown managers. The agent classifies unorganized notes, files them, and **verifies** the filing decision (second scorer; `general` / low-confidence stay in needs-review). No custom UI. **Drive is not wired yet** (folder id is null; example catalog IDs are fixtures, not live files).
+Shared capture inbox for the 4 Chick-fil-A Hueytown managers. Dashboard at **`/brain`**. The agent classifies unorganized notes, files them, and **verifies** the filing decision (second scorer; `general` / low-confidence stay in needs-review). **Drive is not wired yet** (folder id is null; example catalog IDs are fixtures, not live files).
 
 ```bash
 npm run test:second-brain
 npx tsx scripts/second-brain.ts capture --actor vinziant@gmail.com --title "Sysco short" --body "Truck shorted nuggets." --process
 ```
 
-See [`second-brain/README.md`](./second-brain/README.md) for the 4-seat access model and how the other 3 managers get access once their emails are known. Store team accounts are denied.
+See [`second-brain/README.md`](./second-brain/README.md). Manager dashboard: [`/brain`](/brain) (not JoltCheck crew login).
 
 ## Features
 

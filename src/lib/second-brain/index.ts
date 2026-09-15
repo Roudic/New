@@ -43,6 +43,12 @@ export {
 } from "./store";
 export type { BrainStore, InboxDrop } from "./store";
 export {
+  authenticateManager,
+  signManagerSession,
+  readManagerSession,
+  MANAGER_COOKIE,
+} from "./manager-auth";
+export {
   captureNote,
   processNote,
   processInbox,

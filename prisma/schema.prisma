@@ -149,6 +149,12 @@ model ScorecardStore {
   updatedAt DateTime @updatedAt
 }
 
+model SecondBrainState {
+  id        String   @id @default("hueytown")
+  payload   String
+  updatedAt DateTime @updatedAt
+}
+
 model TaskCompletion {
   id            String   @id @default(cuid())
   runId         String

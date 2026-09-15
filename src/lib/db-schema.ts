@@ -88,6 +88,12 @@ CREATE TABLE IF NOT EXISTS "ScorecardStore" (
     "payload" TEXT NOT NULL,
     "updatedAt" DATETIME NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS "SecondBrainState" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "payload" TEXT NOT NULL,
+    "updatedAt" DATETIME NOT NULL
+);
 `;
 
 const MIGRATION_SQL = `

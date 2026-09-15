@@ -1,8 +1,10 @@
 # Second Brain OPs (Phase 1)
 
-Agentic OS for Chick-fil-A Hueytown **managers**. There is **no custom app UI** and this is **not** JoltCheck employee login.
+Agentic OS for Chick-fil-A Hueytown **managers**. This is **not** JoltCheck employee login.
 
-**Drive is not wired yet.** The shared folder id is `null`. `second-brain/drive-catalog.example.json` is a **fixture** (simulated IDs that 404). The CLI does **not** seed it into the live store. Filing is local JSON under `data/second-brain/`. `confirm-share` does **not** activate seats: a folder id in JSON is not proof of Drive share. Joshua is the operator exception.
+**Dashboard:** `/brain` (sign-in at `/brain/login`). Manager password is `SECOND_BRAIN_PASSWORD`. JoltCheck accounts cannot use it.
+
+**Drive is not wired yet.** The shared folder id is `null`. `second-brain/drive-catalog.example.json` is a **fixture** (simulated IDs that 404). The CLI does **not** seed it into the live store. Filing is local JSON / the `SecondBrainState` table. `confirm-share` does **not** activate seats: a folder id in JSON is not proof of Drive share. Joshua is the operator exception.
 
 ## Who can use it
 
