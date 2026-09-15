@@ -7,6 +7,10 @@ import {
   authorize,
   INVALID_CREDENTIALS_REASON,
   buildBrainGraph,
+  createSimNodes,
+  fibonacciSphere,
+  pickProjectedNode,
+  projectNodes,
   captureNote,
   classify,
   commitVerified,
@@ -29,6 +33,7 @@ import {
   readNotes,
   reviewClassify,
   signManagerSession,
+  stepForce,
   STORE_TEAM_DENYLIST,
   verifyFiling,
   type CapturedNote,
@@ -858,6 +863,26 @@ function testBrainMapGraph() {
   console.log("ok 3D brain map graph (no fake Drive)");
 }
 
+function testBrainMapView() {
+  const graph = buildBrainGraph([], []);
+  const sim = createSimNodes(graph.nodes);
+  assert(sim.length === graph.nodes.length && sim.length >= 6, "sim nodes match graph");
+  const seeds = fibonacciSphere(sim.length, 150);
+  const keys: Record<string, true> = {};
+  for (let i = 0; i < seeds.length; i += 1) {
+    const key = `${Math.round(seeds[i].x)}:${Math.round(seeds[i].y)}:${Math.round(seeds[i].z)}`;
+    assert(!keys[key], "sphere seeds are distinct");
+    keys[key] = true;
+  }
+  for (let i = 0; i < 40; i += 1) stepForce(sim, graph.links, 0.9);
+  const projected = projectNodes(sim, 0.4, 0.2, 420, 800, 500);
+  assert(projected.length === sim.length, "every note is projected");
+  const front = projected[projected.length - 1];
+  const hit = pickProjectedNode(projected, front.sx, front.sy);
+  assert(hit && hit.id === front.node.id, "click picks the visible note");
+  console.log("ok canvas 2.5D map view");
+}
+
 function main() {
   testClassify();
   testFileAndVerify();
@@ -875,6 +900,7 @@ function main() {
   testDoesNotTreatPlaceholderCatalogAsLive();
   testManagerDashboardAuth();
   testBrainMapGraph();
+  testBrainMapView();
   console.log("ok second-brain phase 1");
 }
 

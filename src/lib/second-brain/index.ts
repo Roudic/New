@@ -63,6 +63,13 @@ export {
   MAP_CATEGORY_COLORS,
 } from "./graph";
 export type { BrainGraph, BrainGraphNode, BrainGraphLink } from "./graph";
+export {
+  createSimNodes,
+  fibonacciSphere,
+  pickProjectedNode,
+  projectNodes,
+  stepForce,
+} from "./map-view";
 export type {
   AccessRoster,
   CapturedNote,
