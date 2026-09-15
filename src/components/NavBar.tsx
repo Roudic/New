@@ -61,6 +61,13 @@ export function NavBar() {
             </div>
           </Link>
 
+          {isAdmin && (
+            <Link href="/checklists/new" className="btn-primary py-2 md:hidden" aria-label="New checklist">
+              <Plus className="h-4 w-4" />
+              New
+            </Link>
+          )}
+
           <div className="hidden items-center gap-2 md:flex">
             <span className="mr-2 text-sm font-medium text-slate-600">
               {settings.employeeName}
