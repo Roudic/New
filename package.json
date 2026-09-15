@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "jarvis": "cd jarvis && npm run dev",
+    "jarvis:setup": "cd jarvis && npm run setup",
     "dev": "node scripts/print-mobile-url.js && next dev -H 0.0.0.0",
     "dev:pulse": "cd drive-thru-pulse && npm run dev",
     "build": "prisma generate && npm run build:pulse && next build",
