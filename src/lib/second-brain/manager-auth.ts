@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { authorize, normalizeEmail } from "./access";
+import { authorize, normalizeEmail, OPERATOR_EMAIL } from "./access";
+import { BRAIN_LOGIN_ENABLED } from "./brain-login";
 import type { AccessRoster } from "./types";
+
+export { BRAIN_LOGIN_ENABLED } from "./brain-login";
 
 export const MANAGER_COOKIE = "second_brain_manager";
 export const MANAGER_COOKIE_PATH = "/brain";
@@ -122,6 +125,14 @@ export function readManagerSession(
   } catch {
     return null;
   }
+}
+
+/** Who the dashboard APIs run as. Login off → Joshua, no password or cookie. */
+export function resolveBrainActor(token: string | undefined, now = Date.now()): string | null {
+  if (!BRAIN_LOGIN_ENABLED) {
+    return OPERATOR_EMAIL;
+  }
+  return readManagerSession(token, now);
 }
 
 export function managerCookieOptions(maxAge: number, path = MANAGER_COOKIE_PATH) {

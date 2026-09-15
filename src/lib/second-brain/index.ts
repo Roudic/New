@@ -46,10 +46,12 @@ export {
   authenticateManager,
   signManagerSession,
   readManagerSession,
+  resolveBrainActor,
   MANAGER_COOKIE,
   MANAGER_COOKIE_PATH,
   INVALID_CREDENTIALS_REASON,
 } from "./manager-auth";
+export { BRAIN_LOGIN_ENABLED } from "./brain-login";
 export {
   captureNote,
   processNote,

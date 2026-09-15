@@ -95,7 +95,7 @@ export function stepForce(nodes: SimNode[], links: BrainGraphLink[], dt: number)
       let dx = a.x - b.x;
       let dy = a.y - b.y;
       let dz = a.z - b.z;
-      let dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.01;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.01;
       const force = (repulsion / (dist * dist)) * dt;
       dx = (dx / dist) * force;
       dy = (dy / dist) * force;

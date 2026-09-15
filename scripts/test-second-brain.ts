@@ -5,6 +5,7 @@ import {
   applyFiling,
   authenticateManager,
   authorize,
+  BRAIN_LOGIN_ENABLED,
   INVALID_CREDENTIALS_REASON,
   buildBrainGraph,
   createSimNodes,
@@ -31,6 +32,7 @@ import {
   proposeFiling,
   readManagerSession,
   readNotes,
+  resolveBrainActor,
   reviewClassify,
   signManagerSession,
   stepForce,
@@ -706,6 +708,22 @@ function testManagerDashboardAuth() {
   console.log("ok manager dashboard auth does not leak password correctness");
 }
 
+function testBrainLoginOff() {
+  assert(BRAIN_LOGIN_ENABLED === false, "login gate is off until production can set a password");
+  assert(
+    resolveBrainActor(undefined) === OPERATOR_EMAIL,
+    "login off: missing cookie still runs as Joshua"
+  );
+  assert(
+    resolveBrainActor("not-a-session") === OPERATOR_EMAIL,
+    "login off: junk token still runs as Joshua"
+  );
+  const roster = defaultRoster();
+  const access = authorize(resolveBrainActor(undefined) ?? "", roster, "capture");
+  assert(access.ok && access.email === OPERATOR_EMAIL, "login off: Joshua can capture");
+  console.log("ok /brain login is off; APIs run as Joshua");
+}
+
 function testDoesNotTreatPlaceholderCatalogAsLive() {
   const store = storeWithCatalog();
   const note = captureNote(store, {
@@ -899,6 +917,7 @@ function main() {
   testVerifyBlocksLeakedDriveLink();
   testDoesNotTreatPlaceholderCatalogAsLive();
   testManagerDashboardAuth();
+  testBrainLoginOff();
   testBrainMapGraph();
   testBrainMapView();
   console.log("ok second-brain phase 1");

@@ -2,6 +2,8 @@
 
 Agentic OS for Chick-fil-A Hueytown **managers**. This is **not** JoltCheck employee login.
 
+**Login is temporarily off.** `/brain`, `/brain/map`, and `/api/brain/*` run as Joshua (`vinziant@gmail.com`) with no password and no cookie. The dashboard shows **Login is off — manager dashboard is open**. JoltCheck employee login (`/login`) is unchanged. `SECOND_BRAIN_PASSWORD` is not required while the gate is off. Flip `BRAIN_LOGIN_ENABLED` in `src/lib/second-brain/brain-login.ts` to restore the manager password gate.
+
 **3D map:** `/brain/map` (linked from `/brain`). Canvas 2.5D force graph (no WebGL) of notes and note↔note links. Drive nodes only when a live manager catalog file exists — empty/unwired Drive stays empty on the map. A few in-memory demo notes appear only when the store has too few linked notes.
 
 **Drive is not wired yet.** The shared folder id is `null`. `second-brain/drive-catalog.example.json` is a **fixture** (simulated IDs that 404). The CLI does **not** seed it into the live store. Filing is local JSON / the `SecondBrainState` table. `confirm-share` does **not** activate seats: a folder id in JSON is not proof of Drive share. Joshua is the operator exception.
