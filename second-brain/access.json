@@ -1,0 +1,48 @@
+{
+  "location": "Chick-fil-A Hueytown",
+  "maxSeats": 4,
+  "driveFolder": {
+    "name": "CFA Hueytown Managers — Second Brain",
+    "id": null,
+    "visibility": "restricted",
+    "anyoneWithLink": false,
+    "shareWithStoreTeam": false
+  },
+  "managers": [
+    {
+      "seat": 1,
+      "id": "joshua-vinziant",
+      "name": "Joshua Vinziant",
+      "email": "vinziant@gmail.com",
+      "status": "active"
+    },
+    {
+      "seat": 2,
+      "id": "manager-seat-2",
+      "name": null,
+      "email": null,
+      "status": "pending-invite"
+    },
+    {
+      "seat": 3,
+      "id": "manager-seat-3",
+      "name": null,
+      "email": null,
+      "status": "pending-invite"
+    },
+    {
+      "seat": 4,
+      "id": "manager-seat-4",
+      "name": null,
+      "email": null,
+      "status": "pending-invite"
+    }
+  ],
+  "howPendingManagersGetAccess": [
+    "An active manager (today: Joshua Vinziant) sends the person's name and Google/work email.",
+    "Fill a pending seat (4 seats max): npx tsx scripts/second-brain.ts grant --actor vinziant@gmail.com --name \"Full Name\" --email \"name@example.com\"",
+    "Share the Drive folder \"CFA Hueytown Managers — Second Brain\" with that same Google account as Editor.",
+    "Do not use Anyone with the link, the whole store, or a crew/team group. Restricted to the 4 manager accounts only.",
+    "That manager can then drop a note, voice memo, or link into the shared Inbox. The agent classifies, files, verifies, and links it."
+  ]
+}
