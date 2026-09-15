@@ -9,15 +9,27 @@ import type {
   DriveFile,
 } from "./types";
 
+export interface InboxDrop {
+  filename: string;
+  actorEmail?: string;
+  actorName?: string;
+  title: string;
+  body: string;
+  source: CaptureSource;
+  url?: string;
+}
+
 export interface BrainStore {
   getRoster(): AccessRoster;
   saveRoster(roster: AccessRoster): void;
   getCatalog(): DriveFile[];
   saveCatalog(files: DriveFile[]): void;
   putNote(note: CapturedNote): void;
+  deleteNote(id: string): void;
   getNote(id: string): CapturedNote | undefined;
   listNotes(): CapturedNote[];
   listInbox(): CapturedNote[];
+  consumeInboxDrops(): InboxDrop[];
 }
 
 export function createNote(input: {
@@ -42,6 +54,14 @@ export function createNote(input: {
     status: "inbox",
     links: [],
   };
+}
+
+function mapValues<T>(map: Map<string, T>): T[] {
+  const values: T[] = [];
+  map.forEach((value) => {
+    values.push(value);
+  });
+  return values;
 }
 
 export class MemoryBrainStore implements BrainStore {
@@ -71,18 +91,26 @@ export class MemoryBrainStore implements BrainStore {
     this.notes.set(note.id, note);
   }
 
+  deleteNote(id: string): void {
+    this.notes.delete(id);
+  }
+
   getNote(id: string): CapturedNote | undefined {
     return this.notes.get(id);
   }
 
   listNotes(): CapturedNote[] {
-    return [...this.notes.values()].sort((a, b) =>
+    return mapValues(this.notes).sort((a, b) =>
       a.capturedAt.localeCompare(b.capturedAt)
     );
   }
 
   listInbox(): CapturedNote[] {
     return this.listNotes().filter((note) => note.status === "inbox");
+  }
+
+  consumeInboxDrops(): InboxDrop[] {
+    return [];
   }
 }
 
@@ -116,9 +144,10 @@ export class FileBrainStore implements BrainStore {
   }
 
   saveCatalog(files: DriveFile[]): void {
+    const live = files.filter((file) => file.simulated !== true);
     fs.writeFileSync(
       path.join(this.rootDir, "catalog.json"),
-      `${JSON.stringify(files, null, 2)}\n`
+      `${JSON.stringify(live, null, 2)}\n`
     );
   }
 
@@ -126,6 +155,11 @@ export class FileBrainStore implements BrainStore {
     const file = path.join(this.rootDir, "notes", `${note.id}.json`);
     fs.writeFileSync(file, `${JSON.stringify(note, null, 2)}\n`);
     this.syncFiledCopy(note);
+  }
+
+  deleteNote(id: string): void {
+    const file = path.join(this.rootDir, "notes", `${id}.json`);
+    if (fs.existsSync(file)) fs.unlinkSync(file);
   }
 
   getNote(id: string): CapturedNote | undefined {
@@ -147,11 +181,24 @@ export class FileBrainStore implements BrainStore {
   }
 
   listInbox(): CapturedNote[] {
-    const dropped = this.ingestDroppedMarkdown();
-    const existing = this.listNotes().filter((note) => note.status === "inbox");
-    const byId = new Map(existing.map((note) => [note.id, note]));
-    for (const note of dropped) byId.set(note.id, note);
-    return [...byId.values()].sort((a, b) => a.capturedAt.localeCompare(b.capturedAt));
+    return this.listNotes().filter((note) => note.status === "inbox");
+  }
+
+  consumeInboxDrops(): InboxDrop[] {
+    const inboxDir = path.join(this.rootDir, "inbox");
+    if (!fs.existsSync(inboxDir)) return [];
+    const drops: InboxDrop[] = [];
+
+    for (const name of fs.readdirSync(inboxDir)) {
+      if (!name.endsWith(".md") && !name.endsWith(".txt")) continue;
+      const file = path.join(inboxDir, name);
+      const raw = fs.readFileSync(file, "utf8");
+      const parsed = parseDroppedNote(raw, name);
+      drops.push({ filename: name, ...parsed });
+      fs.unlinkSync(file);
+    }
+
+    return drops;
   }
 
   private syncFiledCopy(note: CapturedNote): void {
@@ -159,32 +206,6 @@ export class FileBrainStore implements BrainStore {
     const dest = path.join(this.rootDir, note.destination.localPath);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.writeFileSync(dest, `${JSON.stringify(note, null, 2)}\n`);
-  }
-
-  private ingestDroppedMarkdown(): CapturedNote[] {
-    const inboxDir = path.join(this.rootDir, "inbox");
-    if (!fs.existsSync(inboxDir)) return [];
-    const ingested: CapturedNote[] = [];
-
-    for (const name of fs.readdirSync(inboxDir)) {
-      if (!name.endsWith(".md") && !name.endsWith(".txt")) continue;
-      const file = path.join(inboxDir, name);
-      const raw = fs.readFileSync(file, "utf8");
-      const parsed = parseDroppedNote(raw, name);
-      const note = createNote({
-        actorEmail: parsed.actorEmail ?? "",
-        actorName: parsed.actorName,
-        title: parsed.title,
-        body: parsed.body,
-        source: parsed.source,
-        url: parsed.url,
-      });
-      this.putNote(note);
-      fs.unlinkSync(file);
-      ingested.push(note);
-    }
-
-    return ingested;
   }
 }
 
@@ -221,11 +242,4 @@ export function parseDroppedNote(
     source: (meta.source as CaptureSource) || "note",
     url: meta.url,
   };
-}
-
-export function seedCatalogFromExample(examplePath: string, store: BrainStore): void {
-  if (store.getCatalog().length > 0) return;
-  if (!fs.existsSync(examplePath)) return;
-  const files = JSON.parse(fs.readFileSync(examplePath, "utf8")) as DriveFile[];
-  store.saveCatalog(files);
 }

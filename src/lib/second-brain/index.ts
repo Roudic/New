@@ -8,12 +8,13 @@ export {
   authorize,
   assertAuthorized,
   grantManagerSeat,
+  confirmDriveShare,
   driveSharePlan,
   normalizeEmail,
   isStoreTeamEmail,
   activeManagerEmails,
 } from "./access";
-export { classify } from "./classify";
+export { classify, reviewClassify, VERIFY_MIN_CONFIDENCE } from "./classify";
 export {
   DRIVE_FOLDER_NAMES,
   destinationFor,
@@ -22,18 +23,22 @@ export {
   commitVerified,
   destinationMatchesCategory,
 } from "./file";
-export { linkNote, scoreDriveFile, isLinkableDriveFile, tokenize } from "./link";
 export {
-  verifyFiling,
-} from "./verify";
+  linkNote,
+  scoreDriveFile,
+  isLinkableDriveFile,
+  isSimulatedDriveFile,
+  isLiveDriveId,
+  tokenize,
+} from "./link";
+export { verifyFiling } from "./verify";
 export {
   MemoryBrainStore,
   FileBrainStore,
   createNote,
-  seedCatalogFromExample,
   parseDroppedNote,
 } from "./store";
-export type { BrainStore } from "./store";
+export type { BrainStore, InboxDrop } from "./store";
 export {
   captureNote,
   processNote,
@@ -44,6 +49,7 @@ export type {
   AccessRoster,
   CapturedNote,
   Classification,
+  DiscardedDrop,
   DriveFile,
   FilingDecision,
   KnowledgeLink,

@@ -1,7 +1,7 @@
 import { authorize } from "./access";
-import { classify } from "./classify";
+import { reviewClassify, VERIFY_MIN_CONFIDENCE } from "./classify";
 import { destinationMatchesCategory } from "./file";
-import { isLinkableDriveFile } from "./link";
+import { isLinkableDriveFile, isSimulatedDriveFile } from "./link";
 import type {
   AccessRoster,
   CapturedNote,
@@ -29,26 +29,35 @@ export function verifyFiling(input: {
   roster: AccessRoster;
 }): VerificationResult {
   const { note, decision, links, catalog, roster } = input;
-  const independent = classify(note.title, note.body);
+  const secondScorer = reviewClassify(note.title, note.body);
   const catalogById = new Map(catalog.map((file) => [file.id, file]));
 
   const access = authorize(note.actorEmail, roster, "capture");
   const body = `${note.title} ${note.body}`.trim();
 
-  const categoryAgrees =
-    independent.category === decision.category ||
-    (independent.category === "general" && decision.category === "general");
+  const categoryAgrees = secondScorer.category === decision.category;
 
   const driveLinks = links.filter((link) => link.type === "drive-file");
   const invalidDriveLinks = driveLinks.filter((link) => {
     const file = catalogById.get(link.targetId);
     return !file || !isLinkableDriveFile(file);
   });
+  const simulatedDriveLinks = driveLinks.filter((link) => {
+    const file = catalogById.get(link.targetId);
+    return !file || isSimulatedDriveFile(file);
+  });
 
   const storeTeamAcl = links.some((link) => {
     const file = catalogById.get(link.targetId);
-    return file?.visibility === "store-team" || file?.visibility === "public" || file?.visibility === "anyone-with-link";
+    return (
+      file?.visibility === "store-team" ||
+      file?.visibility === "public" ||
+      file?.visibility === "anyone-with-link"
+    );
   });
+
+  const driveConfigured = Boolean(roster.driveFolder.id);
+  const driveLinksAllowed = driveConfigured && simulatedDriveLinks.length === 0;
 
   const checks: VerificationCheck[] = [
     check(
@@ -64,11 +73,25 @@ export function verifyFiling(input: {
       body.length > 0 ? "note has content" : "empty notes cannot be filed"
     ),
     check(
-      "independent-classify-agrees",
+      "second-scorer-agrees",
       categoryAgrees,
       categoryAgrees
-        ? `independent classify is ${independent.category}`
-        : `written category is ${decision.category} but independent classify is ${independent.category}`
+        ? `second scorer is ${secondScorer.category}`
+        : `written category is ${decision.category} but second scorer is ${secondScorer.category}`
+    ),
+    check(
+      "not-general",
+      decision.category !== "general",
+      decision.category !== "general"
+        ? `category ${decision.category}`
+        : "general notes stay in needs-review until a manager files them"
+    ),
+    check(
+      "confidence-high-enough",
+      decision.confidence >= VERIFY_MIN_CONFIDENCE,
+      decision.confidence >= VERIFY_MIN_CONFIDENCE
+        ? `confidence ${decision.confidence.toFixed(2)}`
+        : `confidence ${decision.confidence.toFixed(2)} is below ${VERIFY_MIN_CONFIDENCE} — needs-review`
     ),
     check(
       "destination-matches-category",
@@ -78,10 +101,19 @@ export function verifyFiling(input: {
         : `destination ${decision.destination.driveFolder} / ${decision.destination.localPath} does not match ${decision.category}`
     ),
     check(
+      "no-simulated-drive-links",
+      driveLinks.length === 0 || driveLinksAllowed,
+      driveLinks.length === 0
+        ? "no Drive links (Drive folder is not wired — fail closed, local file only)"
+        : driveLinksAllowed
+          ? `${driveLinks.length} live Drive link(s)`
+          : "refusing placeholder / simulated Drive file IDs. Catalog is not live."
+    ),
+    check(
       "drive-links-in-manager-catalog",
       invalidDriveLinks.length === 0,
       invalidDriveLinks.length === 0
-        ? `${driveLinks.length} Drive link(s) are in the manager-only catalog`
+        ? `${driveLinks.length} Drive link(s) passed ACL`
         : `blocked Drive link(s): ${invalidDriveLinks.map((link) => link.targetId).join(", ")}`
     ),
     check(
@@ -96,8 +128,10 @@ export function verifyFiling(input: {
   ];
 
   const warnings: string[] = [];
-  if (decision.category !== "general" && decision.confidence < 0.55) {
-    warnings.push("classification confidence is low — worth a manager glance");
+  if (!driveConfigured) {
+    warnings.push(
+      "Drive folder id is null. Filing is local-only. Do not treat links as live Google Drive files."
+    );
   }
 
   const ok = checks.filter((item) => item.blocking).every((item) => item.ok);

@@ -22,10 +22,12 @@ export const STORE_TEAM_DENYLIST = [
 
 export const PENDING_ACCESS_STEPS = [
   "An active manager (today: Joshua Vinziant) sends the person's name and Google/work email.",
-  "Fill a pending seat (4 seats max): npx tsx scripts/second-brain.ts grant --actor vinziant@gmail.com --name \"Full Name\" --email \"name@example.com\"",
+  "Fill a pending seat (4 seats max). The seat stays pending-invite until Drive share is confirmed:",
+  "npx tsx scripts/second-brain.ts grant --actor vinziant@gmail.com --name \"Full Name\" --email \"name@example.com\"",
   "Share the Drive folder \"CFA Hueytown Managers — Second Brain\" with that same Google account as Editor.",
   "Do not use Anyone with the link, the whole store, or a crew/team group. Restricted to the 4 manager accounts only.",
-  "That manager can then drop a note, voice memo, or link into the shared Inbox. The agent classifies, files, verifies, and links it.",
+  "After the live Drive folder id is set and that person is an Editor, confirm: npx tsx scripts/second-brain.ts confirm-share --actor vinziant@gmail.com --email \"name@example.com\"",
+  "confirm-share fails closed while the Drive folder id is null — do not activate a seat on grant alone.",
 ] as const;
 
 export function normalizeEmail(email: string | null | undefined): string {
@@ -50,6 +52,7 @@ export function defaultRoster(): AccessRoster {
         name: OPERATOR_NAME,
         email: OPERATOR_EMAIL,
         status: "active",
+        driveShareConfirmed: true,
       },
       {
         seat: 2,
@@ -57,6 +60,7 @@ export function defaultRoster(): AccessRoster {
         name: null,
         email: null,
         status: "pending-invite",
+        driveShareConfirmed: false,
       },
       {
         seat: 3,
@@ -64,6 +68,7 @@ export function defaultRoster(): AccessRoster {
         name: null,
         email: null,
         status: "pending-invite",
+        driveShareConfirmed: false,
       },
       {
         seat: 4,
@@ -71,6 +76,7 @@ export function defaultRoster(): AccessRoster {
         name: null,
         email: null,
         status: "pending-invite",
+        driveShareConfirmed: false,
       },
     ],
     howPendingManagersGetAccess: [...PENDING_ACCESS_STEPS],
@@ -93,9 +99,13 @@ export function findManagerSeat(
 }
 
 export function activeManagerEmails(roster: AccessRoster): string[] {
-  return roster.managers
-    .filter((seat) => seat.status === "active" && seat.email)
-    .map((seat) => normalizeEmail(seat.email));
+  const emails: string[] = [];
+  for (const seat of roster.managers) {
+    if (seat.status === "active" && seat.email) {
+      emails.push(normalizeEmail(seat.email));
+    }
+  }
+  return emails;
 }
 
 export function authorize(
@@ -152,12 +162,12 @@ export function authorize(
     };
   }
 
-  if (seat.status !== "active") {
+  if (seat.status !== "active" || !seat.driveShareConfirmed) {
     return {
       ok: false,
       email: normalized,
       code: "pending-seat",
-      reason: `This manager seat is pending invite. Finish grant + Drive share before they can ${action}.`,
+      reason: `This manager seat is pending invite. Finish grant + confirmed Drive share before they can ${action}.`,
       seat,
     };
   }
@@ -228,7 +238,8 @@ export function grantManagerSeat(
           ...seat,
           name,
           email,
-          status: "active" as const,
+          status: "pending-invite" as const,
+          driveShareConfirmed: false,
         }
       : seat
   ) as AccessRoster["managers"];
@@ -248,26 +259,101 @@ export function grantManagerSeat(
   return { ok: true, roster: next, seat: next.managers[pendingIndex] };
 }
 
+export function confirmDriveShare(
+  roster: AccessRoster,
+  actorEmail: string,
+  managerEmail: string
+): { ok: true; roster: AccessRoster; seat: ManagerSeat } | { ok: false; error: string } {
+  const actor = authorize(actorEmail, roster, "confirm-share");
+  if (!actor.ok) {
+    return { ok: false, error: actor.reason };
+  }
+
+  if (!roster.driveFolder.id) {
+    return {
+      ok: false,
+      error:
+        "Drive folder id is not configured. Cannot confirm a live share. Fail closed until the manager folder exists in Drive.",
+    };
+  }
+
+  const email = normalizeEmail(managerEmail);
+  const seatIndex = roster.managers.findIndex(
+    (seat) => seat.email !== null && normalizeEmail(seat.email) === email
+  );
+  if (seatIndex === -1) {
+    return { ok: false, error: "That email does not have a granted manager seat." };
+  }
+
+  const seat = roster.managers[seatIndex];
+  if (!seat.name || !seat.email) {
+    return { ok: false, error: "Grant the seat (name + email) before confirming Drive share." };
+  }
+
+  const nextManagers = roster.managers.map((item, index) =>
+    index === seatIndex
+      ? {
+          ...item,
+          status: "active" as const,
+          driveShareConfirmed: true,
+        }
+      : item
+  ) as AccessRoster["managers"];
+
+  const next: AccessRoster = {
+    ...roster,
+    managers: nextManagers,
+    driveFolder: {
+      ...roster.driveFolder,
+      visibility: "restricted",
+      anyoneWithLink: false,
+      shareWithStoreTeam: false,
+    },
+  };
+
+  return { ok: true, roster: next, seat: next.managers[seatIndex] };
+}
+
 export function driveSharePlan(roster: AccessRoster): {
   folderName: string;
+  folderId: string | null;
+  live: boolean;
   anyoneWithLink: false;
   shareWithStoreTeam: false;
   shareWith: { email: string; name: string; role: "writer" }[];
+  awaitingDriveShare: ManagerSeat[];
   pending: ManagerSeat[];
   doNotShareWith: string[];
 } {
+  const shareWith: { email: string; name: string; role: "writer" }[] = [];
+  const awaitingDriveShare: ManagerSeat[] = [];
+  const pending: ManagerSeat[] = [];
+
+  for (const seat of roster.managers) {
+    if (seat.status === "active" && seat.email && seat.name && seat.driveShareConfirmed) {
+      shareWith.push({
+        email: normalizeEmail(seat.email),
+        name: seat.name,
+        role: "writer",
+      });
+      continue;
+    }
+    if (seat.email) {
+      awaitingDriveShare.push(seat);
+    } else {
+      pending.push(seat);
+    }
+  }
+
   return {
     folderName: roster.driveFolder.name,
+    folderId: roster.driveFolder.id,
+    live: Boolean(roster.driveFolder.id),
     anyoneWithLink: false,
     shareWithStoreTeam: false,
-    shareWith: roster.managers
-      .filter((seat) => seat.status === "active" && seat.email && seat.name)
-      .map((seat) => ({
-        email: normalizeEmail(seat.email),
-        name: seat.name as string,
-        role: "writer" as const,
-      })),
-    pending: roster.managers.filter((seat) => seat.status === "pending-invite"),
-    doNotShareWith: [...STORE_TEAM_DENYLIST],
+    shareWith,
+    awaitingDriveShare,
+    pending,
+    doNotShareWith: STORE_TEAM_DENYLIST.slice(),
   };
 }

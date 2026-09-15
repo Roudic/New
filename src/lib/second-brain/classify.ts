@@ -96,6 +96,17 @@ const SIGNALS: Signal[] = [
   { phrase: "punch", category: "schedules", weight: 2 },
 ];
 
+const NEGATED_PHRASES = [
+  "no injury",
+  "no injuries",
+  "not injured",
+  "no incident",
+  "not an incident",
+  "no incident report",
+  "no complaint",
+  "not a complaint",
+];
+
 function emptyScores(): Record<SecondBrainCategory, number> {
   return {
     "shift-notes": 0,
@@ -107,17 +118,16 @@ function emptyScores(): Record<SecondBrainCategory, number> {
   };
 }
 
-function containsPhrase(text: string, phrase: string): boolean {
+export function containsPhrase(text: string, phrase: string): boolean {
   const escaped = phrase
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/\s+/g, "\\s+");
   return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(text);
 }
 
-export function classify(title: string, body: string): Classification {
-  const text = `${title}\n${body}`.trim();
+function classifyFromText(text: string, extraReasons: string[] = []): Classification {
   const scores = emptyScores();
-  const reasons: string[] = [];
+  const reasons = extraReasons.slice();
 
   for (const signal of SIGNALS) {
     if (!containsPhrase(text, signal.phrase)) continue;
@@ -125,21 +135,21 @@ export function classify(title: string, body: string): Classification {
     reasons.push(`${signal.category}: "${signal.phrase}" (+${signal.weight})`);
   }
 
-  const ranked = SECOND_BRAIN_CATEGORIES
-    .filter((category) => category !== "general")
+  const ranked = SECOND_BRAIN_CATEGORIES.filter((category) => category !== "general")
     .map((category) => ({ category, score: scores[category] }))
     .sort((a, b) => b.score - a.score);
 
   const top = ranked[0];
   const second = ranked[1];
-  const ambiguous = !top || top.score === 0 || (top.score < 3 && top.score - (second?.score ?? 0) < 1);
+  const ambiguous =
+    !top || top.score === 0 || (top.score < 3 && top.score - (second?.score ?? 0) < 1);
 
   const category: SecondBrainCategory = ambiguous ? "general" : top.category;
   if (category === "general") {
     reasons.push(
       top && top.score > 0
-        ? "signals were weak or tied — filed as general"
-        : "no category signals — filed as general"
+        ? "signals were weak or tied — held as general"
+        : "no category signals — held as general"
     );
   }
 
@@ -150,3 +160,26 @@ export function classify(title: string, body: string): Classification {
 
   return { category, confidence, scores, reasons };
 }
+
+export function classify(title: string, body: string): Classification {
+  return classifyFromText(`${title}\n${body}`.trim());
+}
+
+/**
+ * Second scorer used by verify. Strips negated phrases so "no injury" does not
+ * count as an incident. This is intentionally not `classify()` again.
+ */
+export function reviewClassify(title: string, body: string): Classification {
+  let text = `${title}\n${body}`.trim();
+  const extraReasons: string[] = ["second scorer (negation-aware)"];
+
+  for (const phrase of NEGATED_PHRASES) {
+    if (!containsPhrase(text, phrase)) continue;
+    extraReasons.push(`stripped negated "${phrase}"`);
+    text = text.replace(new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), " ");
+  }
+
+  return classifyFromText(text, extraReasons);
+}
+
+export const VERIFY_MIN_CONFIDENCE = 0.55;

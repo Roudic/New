@@ -1,4 +1,4 @@
-import { authorize } from "./access";
+import { authorize, normalizeEmail } from "./access";
 import { applyFiling, commitVerified, proposeFiling } from "./file";
 import { linkNote } from "./link";
 import { createNote, type BrainStore } from "./store";
@@ -38,14 +38,17 @@ export function processNote(store: BrainStore, note: CapturedNote): ProcessResul
   const roster = store.getRoster();
   const access = authorize(note.actorEmail, roster, "capture");
   if (!access.ok) {
-    const rejected: CapturedNote = {
-      ...note,
-      status: "rejected",
-      rejectedReason: access.reason,
+    store.deleteNote(note.id);
+    return {
+      note: {
+        ...note,
+        body: "",
+        status: "rejected",
+        rejectedReason: access.reason,
+        links: [],
+      },
       links: [],
     };
-    store.putNote(rejected);
-    return { note: rejected, links: [] };
   }
 
   const decision = proposeFiling(note);
@@ -68,12 +71,46 @@ export function processInbox(
   store: BrainStore,
   actorEmail: string
 ): ProcessResult[] {
-  const access = authorize(actorEmail, store.getRoster(), "process");
+  const roster = store.getRoster();
+  const access = authorize(actorEmail, roster, "process");
   if (!access.ok) {
     throw new Error(access.reason);
   }
 
-  return store.listInbox().map((note) => processNote(store, note));
+  const results: ProcessResult[] = [];
+  const drops = store.consumeInboxDrops();
+
+  for (const drop of drops) {
+    const claimed = normalizeEmail(drop.actorEmail);
+    if (claimed && claimed !== access.email) {
+      results.push({
+        links: [],
+        discarded: {
+          filename: drop.filename,
+          claimedActor: claimed,
+          reason:
+            "Inbox frontmatter actor is not trusted. Claimed identity does not match the authenticated processor. Drop discarded; body not stored.",
+        },
+      });
+      continue;
+    }
+
+    const note = captureNote(store, {
+      actorEmail: access.email,
+      actorName: access.seat?.name ?? undefined,
+      title: drop.title,
+      body: drop.body,
+      source: drop.source,
+      url: drop.url,
+    });
+    results.push(processNote(store, note));
+  }
+
+  for (const note of store.listInbox()) {
+    results.push(processNote(store, note));
+  }
+
+  return results;
 }
 
 export function readNotes(store: BrainStore, actorEmail: string): CapturedNote[] {
@@ -81,5 +118,5 @@ export function readNotes(store: BrainStore, actorEmail: string): CapturedNote[]
   if (!access.ok) {
     throw new Error(access.reason);
   }
-  return store.listNotes();
+  return store.listNotes().filter((note) => note.status !== "rejected");
 }

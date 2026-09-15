@@ -28,6 +28,7 @@ export interface ManagerSeat {
   name: string | null;
   email: string | null;
   status: ManagerSeatStatus;
+  driveShareConfirmed: boolean;
 }
 
 export interface DriveFolderPolicy {
@@ -55,6 +56,8 @@ export interface DriveFile {
   keywords: string[];
   managerShared: boolean;
   visibility: DriveVisibility;
+  /** Fixture / example only. Never treat as a live Drive file. */
+  simulated?: boolean;
 }
 
 export interface Classification {
@@ -119,7 +122,7 @@ export interface CapturedNote {
   rejectedReason?: string;
 }
 
-export type AccessAction = "capture" | "read" | "process" | "grant";
+export type AccessAction = "capture" | "read" | "process" | "grant" | "confirm-share";
 
 export interface AccessDecision {
   ok: boolean;
@@ -134,8 +137,15 @@ export interface AccessDecision {
   seat?: ManagerSeat;
 }
 
+export interface DiscardedDrop {
+  filename: string;
+  reason: string;
+  claimedActor?: string;
+}
+
 export interface ProcessResult {
-  note: CapturedNote;
+  note?: CapturedNote;
+  discarded?: DiscardedDrop;
   decision?: FilingDecision;
   links: KnowledgeLink[];
   verification?: VerificationResult;

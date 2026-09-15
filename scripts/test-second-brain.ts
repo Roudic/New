@@ -7,12 +7,14 @@ import {
   captureNote,
   classify,
   commitVerified,
+  confirmDriveShare,
   defaultRoster,
   destinationFor,
   driveSharePlan,
   FileBrainStore,
   grantManagerSeat,
   isLinkableDriveFile,
+  isSimulatedDriveFile,
   linkNote,
   MemoryBrainStore,
   OPERATOR_EMAIL,
@@ -20,6 +22,7 @@ import {
   processNote,
   proposeFiling,
   readNotes,
+  reviewClassify,
   STORE_TEAM_DENYLIST,
   verifyFiling,
   type CapturedNote,
@@ -31,7 +34,7 @@ function assert(cond: unknown, message: string): asserts cond {
   if (!cond) throw new Error(message);
 }
 
-function catalog(): DriveFile[] {
+function simulatedCatalog(): DriveFile[] {
   return [
     {
       id: "drive-sop-food-safety",
@@ -41,6 +44,7 @@ function catalog(): DriveFile[] {
       keywords: ["food safety", "sop", "temperature", "incident"],
       managerShared: true,
       visibility: "managers-only",
+      simulated: true,
     },
     {
       id: "drive-vendor-sysco",
@@ -50,6 +54,17 @@ function catalog(): DriveFile[] {
       keywords: ["sysco", "invoice", "order guide", "credit memo"],
       managerShared: true,
       visibility: "managers-only",
+      simulated: true,
+    },
+    {
+      id: "drive-vendor-beverage",
+      name: "Beverage contract 2024",
+      webViewLink: "https://drive.google.com/file/d/drive-vendor-beverage/view",
+      folder: "Vendors",
+      keywords: ["pepsi", "beverage", "coke"],
+      managerShared: true,
+      visibility: "managers-only",
+      simulated: true,
     },
     {
       id: "drive-training-pathway",
@@ -59,6 +74,7 @@ function catalog(): DriveFile[] {
       keywords: ["pathway", "trainee", "onboarding", "new hire"],
       managerShared: true,
       visibility: "managers-only",
+      simulated: true,
     },
     {
       id: "drive-week-schedule",
@@ -68,6 +84,7 @@ function catalog(): DriveFile[] {
       keywords: ["schedule", "roster", "availability"],
       managerShared: true,
       visibility: "managers-only",
+      simulated: true,
     },
     {
       id: "drive-store-team-handbook",
@@ -77,12 +94,13 @@ function catalog(): DriveFile[] {
       keywords: ["sysco", "invoice", "training", "schedule", "shift", "pathway"],
       managerShared: false,
       visibility: "store-team",
+      simulated: true,
     },
   ];
 }
 
 function storeWithCatalog() {
-  return new MemoryBrainStore(defaultRoster(), catalog());
+  return new MemoryBrainStore(defaultRoster(), simulatedCatalog());
 }
 
 function testClassify() {
@@ -113,6 +131,8 @@ function testFileAndVerify() {
   assert(pending.status === "pending-verify", "written filing is not committed until verify");
 
   const links = linkNote(pending, store.getCatalog(), store.listNotes());
+  assert(!links.some((link) => link.type === "drive-file"), "pipeline must not attach placeholder Drive IDs");
+
   const verification = verifyFiling({
     note: { ...pending, links },
     decision,
@@ -149,10 +169,38 @@ function testVerifyCatchesWrongFiling() {
     roster: store.getRoster(),
   });
   assert(!verification.ok, "verify must fail when written category disagrees");
-  const independent = verification.checks.find((c) => c.name === "independent-classify-agrees");
-  assert(independent && !independent.ok, "independent classify check failed");
+  const independent = verification.checks.find((c) => c.name === "second-scorer-agrees");
+  assert(independent && !independent.ok, "second scorer check failed");
   assert(commitVerified(pending, verification).status === "needs-review", "failed verify stays review, not filed");
   console.log("ok verify catches wrong filing");
+}
+
+function testVerifyIsIndependent() {
+  const title = "Close";
+  const body = "Close was fine, no injury, no incident, just a quiet night";
+  const first = classify(title, body);
+  const second = reviewClassify(title, body);
+  assert(first.category === "incidents", "keyword classify still sees injury/incident");
+  assert(second.category !== first.category, "second scorer must be able to disagree");
+  assert(second.category === "shift-notes", "negation-aware scorer prefers shift-notes");
+
+  const store = storeWithCatalog();
+  const result = processNote(
+    store,
+    captureNote(store, { actorEmail: OPERATOR_EMAIL, title, body })
+  );
+  assert(result.note?.status === "needs-review", "disagreement holds the note for review");
+
+  const general = processNote(
+    store,
+    captureNote(store, {
+      actorEmail: OPERATOR_EMAIL,
+      title: "Door",
+      body: "Remember to check the back door",
+    })
+  );
+  assert(general.note?.status === "needs-review", "general stays in needs-review");
+  console.log("ok verify independent second scorer");
 }
 
 function testVerifyCatchesDestinationMismatch() {
@@ -188,11 +236,24 @@ function testLink() {
       body: "Sysco invoice shorted bread. Check the order guide.",
     })
   );
-  assert(first.note.status === "filed", "first vendor note filed");
-  const syscoLink = first.links.find((link) => link.targetId === "drive-vendor-sysco");
-  assert(syscoLink?.type === "drive-file", "links Sysco Drive file");
+  assert(first.note?.status === "filed", "first vendor note filed");
   assert(
-    !first.links.some((link) => link.targetId === "drive-store-team-handbook"),
+    !first.links.some((link) => link.type === "drive-file"),
+    "live pipeline must not attach simulated Drive URLs"
+  );
+
+  const scored = linkNote(
+    { ...(first.note as CapturedNote), category: "vendor" },
+    simulatedCatalog(),
+    [],
+    { allowSimulated: true }
+  );
+  assert(
+    scored.some((link) => link.targetId === "drive-vendor-sysco"),
+    "fixture matcher still finds Sysco when allowSimulated"
+  );
+  assert(
+    !scored.some((link) => link.targetId === "drive-store-team-handbook"),
     "must not link the store-team handbook"
   );
 
@@ -205,13 +266,38 @@ function testLink() {
     })
   );
   assert(
-    second.links.some((link) => link.type === "note" && link.targetId === first.note.id),
+    second.links.some((link) => link.type === "note" && link.targetId === first.note?.id),
     "second vendor note links to the first"
   );
 
-  const leakFile = catalog().find((file) => file.id === "drive-store-team-handbook");
+  const leakFile = simulatedCatalog().find((file) => file.id === "drive-store-team-handbook");
   assert(leakFile && !isLinkableDriveFile(leakFile), "store-team file is not linkable");
+  assert(leakFile && isSimulatedDriveFile(leakFile), "placeholder catalog files are simulated");
   console.log("ok link");
+}
+
+function testFolderOnlyLinks() {
+  const note: CapturedNote = {
+    id: "n1",
+    actorEmail: OPERATOR_EMAIL,
+    title: "Sysco short",
+    body: "Sysco truck shorted 2 cases of nuggets, need a credit memo.",
+    source: "note",
+    capturedAt: new Date().toISOString(),
+    status: "pending-verify",
+    category: "vendor",
+    links: [],
+  };
+  const links = linkNote(note, simulatedCatalog(), [], { allowSimulated: true });
+  assert(
+    links.some((link) => link.targetId === "drive-vendor-sysco"),
+    "Sysco order guide still links on shared terms"
+  );
+  assert(
+    !links.some((link) => link.targetId === "drive-vendor-beverage"),
+    "folder-only +2 must not link Beverage contract 2024"
+  );
+  console.log("ok folder-only links refused");
 }
 
 function testPipelineRejectsStoreTeam() {
@@ -249,67 +335,94 @@ function testPipelineRejectsStoreTeam() {
   console.log("ok access deny store team");
 }
 
-function testGrantSeats() {
+function testGrantBeforeShare() {
   let roster = defaultRoster();
   const first = grantManagerSeat(roster, OPERATOR_EMAIL, {
     name: "Manager Two",
     email: "manager.two@example.com",
   });
   assert(first.ok, "grant seat 2");
-  roster = first.ok ? first.roster : roster;
+  if (!first.ok) return;
+  roster = first.roster;
+  assert(first.seat.status === "pending-invite", "grant does not activate");
+  assert(first.seat.driveShareConfirmed === false, "share not confirmed");
 
-  const dup = grantManagerSeat(roster, "manager.two@example.com", {
+  const pendingAccess = authorize("manager.two@example.com", roster, "capture");
+  assert(pendingAccess.code === "pending-seat", "granted manager cannot capture yet");
+
+  const store = new MemoryBrainStore(roster, []);
+  let captureThrew = false;
+  try {
+    captureNote(store, {
+      actorEmail: "manager.two@example.com",
+      title: "hi",
+      body: "Sysco truck shorted bread",
+    });
+  } catch {
+    captureThrew = true;
+  }
+  assert(captureThrew, "grant-before-share cannot capture");
+
+  const blocked = confirmDriveShare(roster, OPERATOR_EMAIL, "manager.two@example.com");
+  assert(!blocked.ok, "confirm-share fails closed without a Drive folder id");
+
+  roster = {
+    ...roster,
+    driveFolder: { ...roster.driveFolder, id: "1A2b3C4d5E6f7G8h9I0jKLMNO-pqrs" },
+  };
+  const confirmed = confirmDriveShare(roster, OPERATOR_EMAIL, "manager.two@example.com");
+  assert(confirmed.ok, "confirm-share works once folder id exists");
+  if (!confirmed.ok) return;
+  assert(confirmed.seat.status === "active", "seat activates after confirm");
+  assert(authorize("manager.two@example.com", confirmed.roster, "capture").ok, "can capture after confirm");
+
+  const dup = grantManagerSeat(confirmed.roster, OPERATOR_EMAIL, {
     name: "Manager Two",
     email: "manager.two@example.com",
   });
   assert(!dup.ok, "duplicate email rejected");
 
-  const crew = grantManagerSeat(roster, OPERATOR_EMAIL, {
+  const crew = grantManagerSeat(confirmed.roster, OPERATOR_EMAIL, {
     name: "Alex",
     email: "alex@store.com",
   });
   assert(!crew.ok, "cannot grant crew");
 
-  const third = grantManagerSeat(roster, OPERATOR_EMAIL, {
+  let filling = confirmed.roster;
+  const third = grantManagerSeat(filling, OPERATOR_EMAIL, {
     name: "Manager Three",
     email: "manager.three@example.com",
   });
   assert(third.ok, "grant seat 3");
-  roster = third.ok ? third.roster : roster;
-
-  const fourth = grantManagerSeat(roster, OPERATOR_EMAIL, {
+  filling = third.ok ? third.roster : filling;
+  const fourth = grantManagerSeat(filling, OPERATOR_EMAIL, {
     name: "Manager Four",
     email: "manager.four@example.com",
   });
   assert(fourth.ok, "grant seat 4");
-  roster = fourth.ok ? fourth.roster : roster;
-
-  const fifth = grantManagerSeat(roster, OPERATOR_EMAIL, {
+  filling = fourth.ok ? fourth.roster : filling;
+  const fifth = grantManagerSeat(filling, OPERATOR_EMAIL, {
     name: "Manager Five",
     email: "manager.five@example.com",
   });
   assert(!fifth.ok, "cannot expand past 4 managers");
 
-  const plan = driveSharePlan(roster);
+  const plan = driveSharePlan(filling);
   assert(plan.anyoneWithLink === false, "no anyone-with-link");
   assert(plan.shareWithStoreTeam === false, "no store team share");
-  assert(plan.shareWith.length === 4, "share with 4 managers");
-  assert(
-    plan.shareWith.every((person) => !(STORE_TEAM_DENYLIST as readonly string[]).includes(person.email)),
-    "share plan excludes store team"
-  );
-  console.log("ok grant seats + share plan");
+  assert(plan.shareWith.length === 2, "only confirmed managers are shareWith");
+  assert(plan.awaitingDriveShare.length === 2, "unconfirmed grants await Drive share");
+  assert(plan.live === true, "plan.live follows folder id");
+  console.log("ok grant stays pending until Drive share confirm");
 }
 
 function testInboxDropAndProcess() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "second-brain-"));
   const store = new FileBrainStore(root);
   store.saveRoster(defaultRoster());
-  store.saveCatalog(catalog());
   fs.writeFileSync(
     path.join(root, "inbox", "sysco-late.md"),
     `---
-actor: ${OPERATOR_EMAIL}
 title: Sysco late
 ---
 Sysco truck was late and the invoice was shorted. Need a credit memo.
@@ -317,15 +430,72 @@ Sysco truck was late and the invoice was shorted. Need a credit memo.
   );
 
   const results = processInbox(store, OPERATOR_EMAIL);
-  assert(results.length === 1, "processed one dropped note");
-  assert(results[0].note.status === "filed", "dropped note filed after verify");
-  assert(results[0].note.category === "vendor", "classified vendor");
-  assert(results[0].verification?.ok === true, "verification ran and passed");
+  const processed = results.find((result) => result.note);
+  assert(processed?.note?.status === "filed", "dropped note filed after verify");
+  assert(processed?.note?.category === "vendor", "classified vendor");
+  assert(processed?.note?.actorEmail === OPERATOR_EMAIL, "identity is the processor, not frontmatter");
+  assert(processed?.verification?.ok === true, "verification ran and passed");
   assert(
-    fs.existsSync(path.join(root, "filed", "vendor", `${results[0].note.id}.json`)),
+    fs.existsSync(path.join(root, "filed", "vendor", `${processed?.note?.id}.json`)),
     "filed copy written"
   );
   console.log("ok inbox drop process");
+}
+
+function testSpoofedDrops() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "second-brain-"));
+  const store = new FileBrainStore(root);
+  store.saveRoster(defaultRoster());
+
+  fs.writeFileSync(
+    path.join(root, "inbox", "crew-spoof.md"),
+    `---
+actor: alex@store.com
+title: Crew leak
+---
+SECRET_CREW_BODY should never be stored
+`
+  );
+  fs.writeFileSync(
+    path.join(root, "inbox", "joshua-claim.md"),
+    `---
+actor: ${OPERATOR_EMAIL}
+title: Spoof Joshua
+---
+SPOOF_JOSHUA_BODY if frontmatter were trusted without the process actor
+`
+  );
+  fs.writeFileSync(
+    path.join(root, "inbox", "other-manager.md"),
+    `---
+actor: manager.two@example.com
+title: Other manager claim
+---
+OTHER_MANAGER_BODY
+`
+  );
+
+  const results = processInbox(store, OPERATOR_EMAIL);
+  const discarded = results.filter((result) => result.discarded);
+  assert(discarded.length === 2, "mismatched claimed actors are discarded");
+  assert(
+    discarded.some((result) => result.discarded?.claimedActor === "alex@store.com"),
+    "crew spoof discarded"
+  );
+  assert(
+    discarded.some((result) => result.discarded?.claimedActor === "manager.two@example.com"),
+    "other-manager spoof discarded"
+  );
+
+  const notes = readNotes(store, OPERATOR_EMAIL);
+  const blob = JSON.stringify(notes);
+  assert(!blob.includes("SECRET_CREW_BODY"), "crew body not persisted");
+  assert(!blob.includes("OTHER_MANAGER_BODY"), "mismatched manager body not persisted");
+
+  const matching = results.find((result) => result.note?.title === "Spoof Joshua");
+  assert(matching?.note?.actorEmail === OPERATOR_EMAIL, "matching claim still uses processor");
+  assert(matching?.note?.status === "needs-review" || matching?.note?.status === "filed", "matching drop is processed");
+  console.log("ok spoofed drops discarded");
 }
 
 function testVerifyBlocksLeakedDriveLink() {
@@ -357,16 +527,51 @@ function testVerifyBlocksLeakedDriveLink() {
   console.log("ok verify blocks store-team Drive link");
 }
 
+function testDoesNotTreatPlaceholderCatalogAsLive() {
+  const store = storeWithCatalog();
+  const note = captureNote(store, {
+    actorEmail: OPERATOR_EMAIL,
+    title: "Sysco short",
+    body: "Sysco truck shorted 2 cases, send the credit memo.",
+  });
+  const decision = proposeFiling(note);
+  const fakeLink = [
+    {
+      type: "drive-file" as const,
+      targetId: "drive-vendor-sysco",
+      title: "Sysco order guide",
+      url: "https://drive.google.com/file/d/drive-vendor-sysco/view",
+      score: 9,
+      why: "placeholder",
+    },
+  ];
+  const verification = verifyFiling({
+    note: { ...note, links: fakeLink },
+    decision,
+    links: fakeLink,
+    catalog: store.getCatalog(),
+    roster: store.getRoster(),
+  });
+  assert(!verification.ok, "placeholder Drive IDs fail closed");
+  const simulated = verification.checks.find((item) => item.name === "no-simulated-drive-links");
+  assert(simulated && !simulated.ok, "simulated Drive check failed");
+  console.log("ok placeholder Drive IDs fail closed");
+}
+
 function main() {
   testClassify();
   testFileAndVerify();
   testVerifyCatchesWrongFiling();
+  testVerifyIsIndependent();
   testVerifyCatchesDestinationMismatch();
   testLink();
+  testFolderOnlyLinks();
   testPipelineRejectsStoreTeam();
-  testGrantSeats();
+  testGrantBeforeShare();
   testInboxDropAndProcess();
+  testSpoofedDrops();
   testVerifyBlocksLeakedDriveLink();
+  testDoesNotTreatPlaceholderCatalogAsLive();
   console.log("ok second-brain phase 1");
 }
 

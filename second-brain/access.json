@@ -14,35 +14,41 @@
       "id": "joshua-vinziant",
       "name": "Joshua Vinziant",
       "email": "vinziant@gmail.com",
-      "status": "active"
+      "status": "active",
+      "driveShareConfirmed": true
     },
     {
       "seat": 2,
       "id": "manager-seat-2",
       "name": null,
       "email": null,
-      "status": "pending-invite"
+      "status": "pending-invite",
+      "driveShareConfirmed": false
     },
     {
       "seat": 3,
       "id": "manager-seat-3",
       "name": null,
       "email": null,
-      "status": "pending-invite"
+      "status": "pending-invite",
+      "driveShareConfirmed": false
     },
     {
       "seat": 4,
       "id": "manager-seat-4",
       "name": null,
       "email": null,
-      "status": "pending-invite"
+      "status": "pending-invite",
+      "driveShareConfirmed": false
     }
   ],
   "howPendingManagersGetAccess": [
     "An active manager (today: Joshua Vinziant) sends the person's name and Google/work email.",
-    "Fill a pending seat (4 seats max): npx tsx scripts/second-brain.ts grant --actor vinziant@gmail.com --name \"Full Name\" --email \"name@example.com\"",
+    "Fill a pending seat (4 seats max). The seat stays pending-invite until Drive share is confirmed:",
+    "npx tsx scripts/second-brain.ts grant --actor vinziant@gmail.com --name \"Full Name\" --email \"name@example.com\"",
     "Share the Drive folder \"CFA Hueytown Managers — Second Brain\" with that same Google account as Editor.",
     "Do not use Anyone with the link, the whole store, or a crew/team group. Restricted to the 4 manager accounts only.",
-    "That manager can then drop a note, voice memo, or link into the shared Inbox. The agent classifies, files, verifies, and links it."
+    "After the live Drive folder id is set and that person is an Editor, confirm: npx tsx scripts/second-brain.ts confirm-share --actor vinziant@gmail.com --email \"name@example.com\"",
+    "confirm-share fails closed while the Drive folder id is null — do not activate a seat on grant alone."
   ]
 }

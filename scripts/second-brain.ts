@@ -2,15 +2,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  OPERATOR_EMAIL,
   captureNote,
+  confirmDriveShare,
   driveSharePlan,
   FileBrainStore,
   grantManagerSeat,
   processInbox,
   processNote,
   readNotes,
-  seedCatalogFromExample,
 } from "../src/lib/second-brain";
 
 function arg(name: string): string | undefined {
@@ -33,10 +32,6 @@ function storeRoot(): string {
 
 function openStore() {
   const store = new FileBrainStore(storeRoot());
-  seedCatalogFromExample(
-    path.join(process.cwd(), "second-brain", "drive-catalog.example.json"),
-    store
-  );
   const rosterFile = path.join(process.cwd(), "second-brain", "access.json");
   if (!fs.existsSync(path.join(storeRoot(), "access.json")) && fs.existsSync(rosterFile)) {
     store.saveRoster(JSON.parse(fs.readFileSync(rosterFile, "utf8")));
@@ -49,7 +44,9 @@ function printJson(value: unknown) {
 }
 
 function usage(): string {
-  return `Second Brain OPs — manager-only capture / classify / file / link / verify
+  return `Second Brain OPs — manager-only capture / classify / file / verify
+
+--actor EMAIL is required on every command. It is never defaulted to Joshua.
 
 Usage:
   npx tsx scripts/second-brain.ts capture --actor EMAIL --title "..." --body "..."
@@ -57,9 +54,10 @@ Usage:
   npx tsx scripts/second-brain.ts process --actor EMAIL
   npx tsx scripts/second-brain.ts status --actor EMAIL
   npx tsx scripts/second-brain.ts grant --actor EMAIL --name "Full Name" --email name@example.com
+  npx tsx scripts/second-brain.ts confirm-share --actor EMAIL --email name@example.com
 
-Drop unorganized notes into data/second-brain/inbox/ as .md files (frontmatter actor/title).
-Drive is the file layer. This CLI is the agentic OS. No app UI.
+Inbox drops: data/second-brain/inbox/*.md. Frontmatter actor is not identity.
+Drive is not wired yet (folder id is null). This CLI will not seed placeholder Drive file IDs.
 `;
 }
 
@@ -71,7 +69,7 @@ async function main() {
   }
 
   const store = openStore();
-  const actor = arg("actor") ?? OPERATOR_EMAIL;
+  const actor = requiredArg("actor");
 
   if (command === "capture") {
     const file = arg("file");
@@ -106,12 +104,19 @@ async function main() {
     printJson({
       actor,
       sharePlan: driveSharePlan(store.getRoster()),
+      drive: {
+        folderId: store.getRoster().driveFolder.id,
+        live: Boolean(store.getRoster().driveFolder.id),
+        catalogFiles: store.getCatalog().length,
+        note: store.getRoster().driveFolder.id
+          ? "Drive folder id is set"
+          : "Drive folder id is null. Local filing only. Placeholder catalog is not loaded.",
+      },
       counts: {
         inbox: notes.filter((note) => note.status === "inbox").length,
         pendingVerify: notes.filter((note) => note.status === "pending-verify").length,
         filed: notes.filter((note) => note.status === "filed").length,
         needsReview: notes.filter((note) => note.status === "needs-review").length,
-        rejected: notes.filter((note) => note.status === "rejected").length,
       },
       notes: notes.map((note) => ({
         id: note.id,
@@ -138,7 +143,24 @@ async function main() {
     printJson({
       granted: result.seat,
       sharePlan: driveSharePlan(result.roster),
-      next: `Share the Drive folder with ${result.seat.email} as Editor. Do not share with the store team.`,
+      next: `Seat stays pending-invite. Share the Drive folder with ${result.seat.email} as Editor, then confirm-share. confirm-share fails until a live Drive folder id is set.`,
+    });
+    return;
+  }
+
+  if (command === "confirm-share") {
+    const result = confirmDriveShare(
+      store.getRoster(),
+      actor,
+      requiredArg("email")
+    );
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
+    store.saveRoster(result.roster);
+    printJson({
+      activated: result.seat,
+      sharePlan: driveSharePlan(result.roster),
     });
     return;
   }

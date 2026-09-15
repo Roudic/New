@@ -6,7 +6,8 @@
     "folder": "SOPs",
     "keywords": ["food safety", "sop", "temperature", "incident"],
     "managerShared": true,
-    "visibility": "managers-only"
+    "visibility": "managers-only",
+    "simulated": true
   },
   {
     "id": "drive-vendor-sysco",
@@ -15,7 +16,8 @@
     "folder": "Vendors",
     "keywords": ["sysco", "invoice", "order guide", "credit memo"],
     "managerShared": true,
-    "visibility": "managers-only"
+    "visibility": "managers-only",
+    "simulated": true
   },
   {
     "id": "drive-training-pathway",
@@ -24,7 +26,8 @@
     "folder": "Training",
     "keywords": ["pathway", "trainee", "onboarding", "new hire"],
     "managerShared": true,
-    "visibility": "managers-only"
+    "visibility": "managers-only",
+    "simulated": true
   },
   {
     "id": "drive-week-schedule",
@@ -33,6 +36,7 @@
     "folder": "Schedules",
     "keywords": ["schedule", "roster", "availability"],
     "managerShared": true,
-    "visibility": "managers-only"
+    "visibility": "managers-only",
+    "simulated": true
   }
 ]
