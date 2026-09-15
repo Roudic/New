@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["pdf-parse", "xlsx", "3d-force-graph", "three"],
+    serverComponentsExternalPackages: ["pdf-parse", "xlsx"],
   },
   transpilePackages: ["3d-force-graph", "three", "three-forcegraph", "three-render-objects"],
   // Allow phones on the same Wi-Fi to load dev assets (Next.js 14.2+)
