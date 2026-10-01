@@ -1,5 +1,5 @@
 import type { BrainGraphLink, BrainGraphNode } from "./graph";
-import { MAP_CATEGORY_COLORS } from "./graph";
+import { BRAIN_MAP_THEME, MAP_CATEGORY_COLORS } from "./design-tokens";
 
 export interface SimNode {
   id: string;
@@ -21,8 +21,8 @@ export interface ProjectedNode {
 }
 
 export function nodeColor(node: BrainGraphNode, selectedId: string | null): string {
-  if (node.id === selectedId) return "#f8fafc";
-  return MAP_CATEGORY_COLORS[node.group] ?? "#94a3b8";
+  if (node.id === selectedId) return BRAIN_MAP_THEME.selectedFill;
+  return MAP_CATEGORY_COLORS[node.group] ?? BRAIN_MAP_THEME.fallbackNode;
 }
 
 export function nodeRadius(node: BrainGraphNode): number {

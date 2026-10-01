@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Brain, Inbox, Network, ShieldAlert, Sparkles } from "lucide-react";
 import { BRAIN_LOGIN_ENABLED } from "@/lib/second-brain/brain-login";
+import { MAP_CATEGORY_COLORS } from "@/lib/second-brain/design-tokens";
 import BrainOpenBanner from "./BrainOpenBanner";
 
 interface Seat {
@@ -40,21 +41,23 @@ interface BrainState {
 }
 
 function NoteCard({ note }: { note: Note }) {
+  const chip = note.category ? MAP_CATEGORY_COLORS[note.category] : undefined;
   return (
-    <article
-      data-note-id={note.id}
-      className="rounded-xl border border-slate-200 bg-white p-3"
-    >
+    <article data-note-id={note.id} className="brain-note">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-900">{note.title}</h3>
+        <h3 className="text-sm font-extrabold tracking-tight text-[var(--brain-ink)]">
+          {note.title}
+        </h3>
         {note.category && (
-          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+          <span className="brain-chip" style={{ "--brain-chip": chip } as React.CSSProperties}>
             {note.category}
           </span>
         )}
       </div>
-      <p className="mt-1 line-clamp-4 text-sm text-slate-600">{note.body}</p>
-      <p className="mt-2 text-[11px] text-slate-400">{note.actorEmail}</p>
+      <p className="mt-1 line-clamp-4 text-sm leading-relaxed text-[var(--brain-muted)]">
+        {note.body}
+      </p>
+      <p className="mt-2 text-[11px] text-[var(--brain-taupe)]">{note.actorEmail}</p>
     </article>
   );
 }
@@ -73,16 +76,14 @@ function Column({
   empty: string;
 }) {
   return (
-    <section id={id} className="glass-panel flex min-h-[16rem] flex-col p-4">
+    <section id={id} className="brain-card flex min-h-[16rem] flex-col p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="section-title text-base">{title}</h2>
-        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-700">
-          {count}
-        </span>
+        <h2 className="brain-card-title">{title}</h2>
+        <span className="brain-count">{count}</span>
       </div>
       <div className="flex flex-1 flex-col gap-2">
         {notes.length === 0 ? (
-          <p className="text-sm text-slate-500">{empty}</p>
+          <p className="text-sm text-[var(--brain-muted)]">{empty}</p>
         ) : (
           notes.map((note) => <NoteCard key={note.id} note={note} />)
         )}
@@ -165,144 +166,143 @@ export default function BrainDashboard() {
 
   if (!state) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm font-medium text-slate-600">Loading Second Brain…</p>
+      <div className="brain-shell flex min-h-screen items-center justify-center">
+        <p className="text-sm font-semibold text-[var(--brain-muted)]">Loading Second Brain…</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background bg-hero-gradient">
-      <div className="pointer-events-none fixed inset-0 bg-grid-pattern bg-grid opacity-40" />
+    <div className="brain-shell">
       <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-[calc(1rem+env(safe-area-inset-top))] md:pb-10">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white">
-            <Brain className="h-5 w-5" />
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="brain-mark" aria-hidden="true">
+              <Brain className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="brain-kicker">Manager-only · 4 seats</p>
+              <h1 className="brain-display text-2xl text-[var(--brain-ink)]">Second Brain OPs</h1>
+              <p className="text-sm text-[var(--brain-muted)]">{state.actor}</p>
+            </div>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/brain/map" id="brain-open-map" className="brain-btn brain-btn--primary py-2">
+              <Network className="h-4 w-4" />
+              Brain map
+            </Link>
+            {BRAIN_LOGIN_ENABLED && (
+              <button type="button" onClick={() => void logout()} className="brain-btn brain-btn--ghost py-2">
+                Sign out
+              </button>
+            )}
+          </div>
+        </header>
+
+        <BrainOpenBanner />
+
+        <div id="drive-status" className="brain-banner brain-banner--warn">
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-[var(--brain-coral)]" />
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-              Manager-only · 4 seats
+            <p className="text-sm font-extrabold">
+              Drive is not wired{state.drive.folderId ? "" : " (folder id is null)"}
             </p>
-            <h1 className="text-xl font-bold text-slate-900">Second Brain OPs</h1>
-            <p className="text-sm text-slate-600">{state.actor}</p>
+            <p className="mt-1 text-sm font-medium opacity-90">{state.drive.message}</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/brain/map" id="brain-open-map" className="btn-primary py-2">
-            <Network className="h-4 w-4" />
-            3D brain map
-          </Link>
-          {BRAIN_LOGIN_ENABLED && (
-            <button type="button" onClick={() => void logout()} className="btn-secondary py-2">
-              Sign out
-            </button>
-          )}
+
+        <div className="mb-6 grid grid-cols-2 gap-2 md:grid-cols-4">
+          {state.seats.map((seat) => (
+            <div key={seat.seat} className="brain-card brain-seat">
+              <p className="brain-kicker">Seat {seat.seat}</p>
+              <p className="mt-1 text-sm font-extrabold text-[var(--brain-ink)]">
+                {seat.name ?? "Open"}
+              </p>
+              <p className="truncate text-xs text-[var(--brain-muted)]">
+                {seat.email ?? "pending invite"}
+              </p>
+              <p className="mt-1 text-[11px] font-semibold text-[var(--brain-muted)]">
+                <span
+                  className={
+                    seat.status === "active" ? "brain-seat-pip brain-seat-pip--active" : "brain-seat-pip"
+                  }
+                />
+                {seat.status}
+              </p>
+            </div>
+          ))}
         </div>
-      </header>
 
-      <BrainOpenBanner />
-
-      <div
-        id="drive-status"
-        className="mb-4 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
-      >
-        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-        <div>
-          <p className="text-sm font-semibold text-amber-950">
-            Drive is not wired{state.drive.folderId ? "" : " (folder id is null)"}
+        <form onSubmit={(e) => void capture(e)} className="brain-card brain-card--capture mb-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Inbox className="h-4 w-4 text-[var(--brain-coral)]" />
+            <h2 className="brain-card-title">Quick capture</h2>
+          </div>
+          <p className="mb-3 text-sm text-[var(--brain-muted)]">
+            Drop a messy note. No folder picking. It lands in the shared inbox, then Sort files it.
           </p>
-          <p className="mt-1 text-sm text-amber-900">{state.drive.message}</p>
-        </div>
-      </div>
-
-      <div className="mb-6 grid grid-cols-2 gap-2 md:grid-cols-4">
-        {state.seats.map((seat) => (
-          <div key={seat.seat} className="glass-panel p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-              Seat {seat.seat}
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">
-              {seat.name ?? "Open"}
-            </p>
-            <p className="truncate text-xs text-slate-500">{seat.email ?? "pending invite"}</p>
-            <p className="mt-1 text-[11px] font-medium text-slate-600">{seat.status}</p>
+          <label className="brain-field" htmlFor="brain-title">
+            Title
+          </label>
+          <input
+            id="brain-title"
+            className="brain-input mb-3"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Optional"
+          />
+          <label className="brain-field" htmlFor="brain-body">
+            Note
+          </label>
+          <textarea
+            id="brain-body"
+            className="brain-input mb-3 min-h-[7rem]"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Shift, vendor, training, incident…"
+            required
+          />
+          {error && <p className="mb-3 text-sm font-semibold text-[var(--brain-coral)]">{error}</p>}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button id="brain-capture" type="submit" className="brain-btn brain-btn--primary" disabled={busy}>
+              Capture to inbox
+            </button>
+            <button
+              id="brain-process"
+              type="button"
+              className="brain-btn brain-btn--ghost"
+              disabled={busy}
+              onClick={() => void processInbox()}
+            >
+              <Sparkles className="h-4 w-4" />
+              Sort inbox
+            </button>
           </div>
-        ))}
-      </div>
+        </form>
 
-      <form onSubmit={(e) => void capture(e)} className="glass-panel mb-6 p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <Inbox className="h-4 w-4 text-brand-700" />
-          <h2 className="section-title text-base">Quick capture</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Column
+            id="inbox-list"
+            title="Unorganized inbox"
+            count={state.inbox.length}
+            notes={state.inbox}
+            empty="Inbox is empty."
+          />
+          <Column
+            id="review-list"
+            title="Needs review"
+            count={state.needsReview.length}
+            notes={state.needsReview}
+            empty="Nothing waiting on a manager glance."
+          />
+          <Column
+            id="filed-list"
+            title="Filed"
+            count={state.filed.length}
+            notes={state.filed}
+            empty="Nothing filed yet."
+          />
         </div>
-        <p className="mb-3 text-sm text-slate-600">
-          Drop a messy note. No folder picking. It lands in the shared inbox, then Sort files it.
-        </p>
-        <label className="field-label" htmlFor="brain-title">
-          Title
-        </label>
-        <input
-          id="brain-title"
-          className="field-input mb-3"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Optional"
-        />
-        <label className="field-label" htmlFor="brain-body">
-          Note
-        </label>
-        <textarea
-          id="brain-body"
-          className="field-input mb-3 min-h-[7rem]"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Shift, vendor, training, incident…"
-          required
-        />
-        {error && (
-          <p className="mb-3 text-sm font-medium text-rose-700">{error}</p>
-        )}
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button id="brain-capture" type="submit" className="btn-primary" disabled={busy}>
-            Capture to inbox
-          </button>
-          <button
-            id="brain-process"
-            type="button"
-            className="btn-secondary"
-            disabled={busy}
-            onClick={() => void processInbox()}
-          >
-            <Sparkles className="h-4 w-4" />
-            Sort inbox
-          </button>
-        </div>
-      </form>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Column
-          id="inbox-list"
-          title="Unorganized inbox"
-          count={state.inbox.length}
-          notes={state.inbox}
-          empty="Inbox is empty."
-        />
-        <Column
-          id="review-list"
-          title="Needs review"
-          count={state.needsReview.length}
-          notes={state.needsReview}
-          empty="Nothing waiting on a manager glance."
-        />
-        <Column
-          id="filed-list"
-          title="Filed"
-          count={state.filed.length}
-          notes={state.filed}
-          empty="Nothing filed yet."
-        />
-      </div>
       </div>
     </div>
   );

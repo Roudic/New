@@ -35,39 +35,38 @@ export default function BrainLoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-background bg-hero-gradient">
-      <div className="pointer-events-none fixed inset-0 bg-grid-pattern bg-grid opacity-40" />
+    <div className="brain-shell">
       <div className="relative flex min-h-screen items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
-          <div className="glass-panel overflow-hidden">
-            <div className="bg-gradient-to-r from-slate-900 to-slate-800 px-8 py-8 text-white">
+          <div className="brain-card overflow-hidden">
+            <div className="bg-gradient-to-br from-[#2c1b14] to-[#4a2a22] px-8 py-8 text-[var(--brain-cream)]">
               <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <div className="brain-mark" aria-hidden="true">
                   <Brain className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/70">
+                  <p className="brain-kicker" style={{ color: "rgba(246,235,227,0.65)" }}>
                     Chick-fil-A Hueytown
                   </p>
-                  <h1 className="text-2xl font-bold">Second Brain OPs</h1>
+                  <h1 className="brain-display text-2xl">Second Brain OPs</h1>
                 </div>
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-white/85">
+              <p className="mt-4 text-sm leading-relaxed text-[var(--brain-cream)]/80">
                 Manager-only. Four seats. Not JoltCheck crew login.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 p-8">
               <div>
-                <label className="field-label" htmlFor="brain-email">
+                <label className="brain-field" htmlFor="brain-email">
                   Manager email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--brain-taupe)]" />
                   <input
                     id="brain-email"
                     type="email"
-                    className="field-input pl-10"
+                    className="brain-input pl-10"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -76,15 +75,15 @@ export default function BrainLoginForm() {
                 </div>
               </div>
               <div>
-                <label className="field-label" htmlFor="brain-password">
+                <label className="brain-field" htmlFor="brain-password">
                   Manager password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--brain-taupe)]" />
                   <input
                     id="brain-password"
                     type="password"
-                    className="field-input pl-10"
+                    className="brain-input pl-10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -93,11 +92,11 @@ export default function BrainLoginForm() {
                 </div>
               </div>
               {error && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                <div className="rounded-[14px] border border-[#f0c3bc] bg-[#fff1ee] px-4 py-3 text-sm font-semibold text-[var(--brain-coral)]">
                   {error}
                 </div>
               )}
-              <button type="submit" className="btn-primary w-full" disabled={submitting}>
+              <button type="submit" className="brain-btn brain-btn--primary w-full" disabled={submitting}>
                 {submitting ? "Signing in..." : "Sign in"}
               </button>
             </form>

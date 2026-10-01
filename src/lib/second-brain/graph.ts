@@ -7,16 +7,7 @@ import type {
   SecondBrainCategory,
 } from "./types";
 
-export const MAP_CATEGORY_COLORS: Record<string, string> = {
-  "shift-notes": "#3b82f6",
-  vendor: "#f59e0b",
-  training: "#10b981",
-  incidents: "#ef4444",
-  schedules: "#8b5cf6",
-  general: "#64748b",
-  inbox: "#94a3b8",
-  drive: "#38bdf8",
-};
+export { MAP_CATEGORY_COLORS } from "./design-tokens";
 
 export interface BrainGraphNode {
   id: string;
