@@ -24,6 +24,7 @@ import {
   integrationPanelState,
   isLinkableDriveFile,
   isLiveCalendarEventId,
+  isLiveCalendarEventUrl,
   isLiveNotionPageId,
   isSimulatedDriveFile,
   linkNote,
@@ -1054,6 +1055,18 @@ function testZapierInboundValidation() {
       htmlLink: "not-a-url",
     }) === null,
     "non-https calendar link is rejected"
+  );
+  assert(isLiveCalendarEventUrl("https://calendar.google.com/calendar/event?eid=abc"), "calendar.google.com accepted");
+  assert(isLiveCalendarEventUrl("https://docs.google.com/document/d/abc"), "docs.google.com accepted");
+  assert(!isLiveCalendarEventUrl("https://evil.example.com/calendar"), "non-Google host rejected by the url check");
+  assert(
+    parseInboundCalendarEvent({
+      id: liveEventId,
+      title: "Fake event",
+      start: "2026-01-01",
+      htmlLink: "https://evil.example.com/calendar/event?eid=fake",
+    }) === null,
+    "calendar link on a non-Google host is rejected, same as Drive and Notion"
   );
 
   const liveNotionId = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";

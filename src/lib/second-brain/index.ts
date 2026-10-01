@@ -67,6 +67,7 @@ export {
   integrationPanelState,
   notifyZapierCapture,
   isLiveCalendarEventId,
+  isLiveCalendarEventUrl,
   isLiveNotionPageId,
   parseInboundDriveFile,
   parseInboundCalendarEvent,

@@ -175,6 +175,18 @@ export function isLiveCalendarEventId(id: string): boolean {
   return /^[a-zA-Z0-9_-]{8,}$/.test(id);
 }
 
+const CALENDAR_LINK_HOSTS = ["calendar.google.com", "docs.google.com"];
+
+export function isLiveCalendarEventUrl(url: string): boolean {
+  if (!url.startsWith("https://")) return false;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return CALENDAR_LINK_HOSTS.includes(host);
+  } catch {
+    return false;
+  }
+}
+
 export function isLiveNotionPageId(id: string): boolean {
   return /^[a-zA-Z0-9-]{16,}$/.test(id);
 }
@@ -220,7 +232,7 @@ export function parseInboundCalendarEvent(payload: unknown): CalendarEvent | nul
   const htmlLink = typeof p.htmlLink === "string" ? p.htmlLink.trim() : "";
   if (!id || !title || !start || !htmlLink) return null;
   if (!isLiveCalendarEventId(id)) return null;
-  if (!htmlLink.startsWith("https://")) return null;
+  if (!isLiveCalendarEventUrl(htmlLink)) return null;
   return {
     id,
     title,
