@@ -89,13 +89,15 @@ async function main() {
       source: (arg("source") as "note" | "voice-memo" | "link") ?? "note",
       url: arg("url"),
     });
-    const result = process.argv.includes("--process") ? processNote(store, note) : { note };
+    const result = process.argv.includes("--process")
+      ? await processNote(store, note)
+      : { note };
     printJson(result);
     return;
   }
 
   if (command === "process") {
-    printJson(processInbox(store, actor));
+    printJson(await processInbox(store, actor));
     return;
   }
 
