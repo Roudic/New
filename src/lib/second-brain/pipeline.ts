@@ -1,5 +1,6 @@
 import { authorize, findManagerSeat, isGrantedManagerEmail, normalizeEmail } from "./access";
 import { applyFiling, commitVerified, proposeFiling } from "./file";
+import { notifyZapierCapture } from "./integrations";
 import { linkNote } from "./link";
 import { createNote, type BrainStore } from "./store";
 import type {
@@ -34,7 +35,10 @@ export function captureNote(
   return note;
 }
 
-export function processNote(store: BrainStore, note: CapturedNote): ProcessResult {
+export async function processNote(
+  store: BrainStore,
+  note: CapturedNote
+): Promise<ProcessResult> {
   const roster = store.getRoster();
   if (!isGrantedManagerEmail(roster, note.actorEmail)) {
     store.deleteNote(note.id);
@@ -64,13 +68,19 @@ export function processNote(store: BrainStore, note: CapturedNote): ProcessResul
   });
   const committed = commitVerified(withLinks, verification);
   store.putNote(committed);
-  return { note: committed, decision, links, verification };
+
+  const zapier =
+    committed.status === "filed"
+      ? await notifyZapierCapture(committed, decision)
+      : undefined;
+
+  return { note: committed, decision, links, verification, zapier };
 }
 
-export function processInbox(
+export async function processInbox(
   store: BrainStore,
   actorEmail: string
-): ProcessResult[] {
+): Promise<ProcessResult[]> {
   const roster = store.getRoster();
   const access = authorize(actorEmail, roster, "process");
   if (!access.ok) {
@@ -107,11 +117,11 @@ export function processInbox(
       url: drop.url,
     });
     store.putNote(note);
-    results.push(processNote(store, note));
+    results.push(await processNote(store, note));
   }
 
   for (const note of store.listInbox()) {
-    results.push(processNote(store, note));
+    results.push(await processNote(store, note));
   }
 
   return results;

@@ -21,7 +21,10 @@ import {
   driveSharePlan,
   FileBrainStore,
   grantManagerSeat,
+  integrationPanelState,
   isLinkableDriveFile,
+  isLiveCalendarEventId,
+  isLiveNotionPageId,
   isSimulatedDriveFile,
   linkNote,
   MemoryBrainStore,
@@ -30,6 +33,9 @@ import {
   BRAIN_CONNECTOR_COLORS,
   BRAIN_MAP_THEME,
   OPERATOR_EMAIL,
+  parseInboundCalendarEvent,
+  parseInboundDriveFile,
+  parseInboundNotionPage,
   processInbox,
   processNote,
   proposeFiling,
@@ -41,6 +47,7 @@ import {
   stepForce,
   STORE_TEAM_DENYLIST,
   verifyFiling,
+  ZAPIER_ENV,
   type CapturedNote,
   type DriveFile,
   type FilingDecision,
@@ -191,7 +198,7 @@ function testVerifyCatchesWrongFiling() {
   console.log("ok verify catches wrong filing");
 }
 
-function testVerifyIsIndependent() {
+async function testVerifyIsIndependent() {
   const title = "Close";
   const body = "Close was fine, no injury, no incident, just a quiet night";
   const first = classify(title, body);
@@ -201,13 +208,13 @@ function testVerifyIsIndependent() {
   assert(second.category === "shift-notes", "negation-aware scorer prefers shift-notes");
 
   const store = storeWithCatalog();
-  const result = processNote(
+  const result = await processNote(
     store,
     captureNote(store, { actorEmail: OPERATOR_EMAIL, title, body })
   );
   assert(result.note?.status === "needs-review", "disagreement holds the note for review");
 
-  const general = processNote(
+  const general = await processNote(
     store,
     captureNote(store, {
       actorEmail: OPERATOR_EMAIL,
@@ -242,9 +249,9 @@ function testVerifyCatchesDestinationMismatch() {
   console.log("ok verify catches destination mismatch");
 }
 
-function testLink() {
+async function testLink() {
   const store = storeWithCatalog();
-  const first = processNote(
+  const first = await processNote(
     store,
     captureNote(store, {
       actorEmail: OPERATOR_EMAIL,
@@ -273,7 +280,7 @@ function testLink() {
     "must not link the store-team handbook"
   );
 
-  const second = processNote(
+  const second = await processNote(
     store,
     captureNote(store, {
       actorEmail: OPERATOR_EMAIL,
@@ -444,7 +451,7 @@ function testGrantBeforeShare() {
   console.log("ok grant stays pending; planted folder id is not share proof");
 }
 
-function testInboxDropAndProcess() {
+async function testInboxDropAndProcess() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "second-brain-"));
   const store = new FileBrainStore(root);
   store.saveRoster(defaultRoster());
@@ -457,7 +464,7 @@ Sysco truck was late and the invoice was shorted. Need a credit memo.
 `
   );
 
-  const results = processInbox(store, OPERATOR_EMAIL);
+  const results = await processInbox(store, OPERATOR_EMAIL);
   const processed = results.find((result) => result.note);
   assert(processed?.note?.status === "filed", "dropped note filed after verify");
   assert(processed?.note?.category === "vendor", "classified vendor");
@@ -470,7 +477,7 @@ Sysco truck was late and the invoice was shorted. Need a credit memo.
   console.log("ok inbox drop process");
 }
 
-function testSpoofedDrops() {
+async function testSpoofedDrops() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "second-brain-"));
   const store = new FileBrainStore(root);
   store.saveRoster(defaultRoster());
@@ -503,7 +510,7 @@ OTHER_MANAGER_BODY
 `
   );
 
-  const results = processInbox(store, OPERATOR_EMAIL);
+  const results = await processInbox(store, OPERATOR_EMAIL);
   const discarded = results.filter((result) => result.discarded);
   assert(discarded.length === 2, "unknown/spoofed claimed actors are discarded");
   assert(
@@ -526,7 +533,7 @@ OTHER_MANAGER_BODY
   console.log("ok spoofed drops discarded");
 }
 
-function testGrantedManagerInboxDrop() {
+async function testGrantedManagerInboxDrop() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "second-brain-"));
   const store = new FileBrainStore(root);
   const granted = grantManagerSeat(defaultRoster(), OPERATOR_EMAIL, {
@@ -555,7 +562,7 @@ Sysco shorted bread, send the credit memo.
 `
   );
 
-  const results = processInbox(store, OPERATOR_EMAIL);
+  const results = await processInbox(store, OPERATOR_EMAIL);
   assert(
     !results.some((result) => result.discarded),
     "granted-manager drop must not be discarded"
@@ -928,19 +935,327 @@ function testBrainDesignTokens() {
   console.log("ok brain design tokens");
 }
 
-function main() {
+function withEnv(overrides: Record<string, string | undefined>, fn: () => void | Promise<void>) {
+  const prev: Record<string, string | undefined> = {};
+  for (const key of Object.keys(overrides)) {
+    prev[key] = process.env[key];
+    const value = overrides[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
+  }
+  const restore = () => {
+    for (const key of Object.keys(prev)) {
+      if (prev[key] === undefined) delete process.env[key];
+      else process.env[key] = prev[key];
+    }
+  };
+  const result = fn();
+  if (result instanceof Promise) {
+    return result.finally(restore);
+  }
+  restore();
+  return undefined;
+}
+
+async function testZapierOutboundCapture() {
+  const originalFetch = globalThis.fetch;
+  try {
+    await withEnv({ [ZAPIER_ENV.CAPTURE_WEBHOOK_URL]: undefined }, async () => {
+      const store = storeWithCatalog();
+      const result = await processNote(
+        store,
+        captureNote(store, {
+          actorEmail: OPERATOR_EMAIL,
+          title: "Sysco short",
+          body: "Sysco truck shorted 2 cases, send the credit memo.",
+        })
+      );
+      assert(result.note?.status === "filed", "note still files without Zapier configured");
+      assert(result.zapier?.attempted === false, "no webhook attempt when unconfigured");
+      assert(result.zapier?.dispatched === false, "not dispatched when unconfigured");
+    });
+
+    await withEnv(
+      { [ZAPIER_ENV.CAPTURE_WEBHOOK_URL]: "https://hooks.zapier.com/hooks/catch/test/" },
+      async () => {
+        const calls: { url: string; body: unknown }[] = [];
+        globalThis.fetch = (async (url: string, init?: RequestInit) => {
+          calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+          return { ok: true, status: 200 } as Response;
+        }) as typeof fetch;
+
+        const store = storeWithCatalog();
+        const result = await processNote(
+          store,
+          captureNote(store, {
+            actorEmail: OPERATOR_EMAIL,
+            title: "Sysco short",
+            body: "Sysco truck shorted 2 cases, send the credit memo.",
+          })
+        );
+        assert(result.zapier?.attempted === true, "webhook attempted when configured");
+        assert(result.zapier?.dispatched === true, "webhook dispatched on 200");
+        assert(calls.length === 1, "fetch called once");
+        assert(calls[0].url === "https://hooks.zapier.com/hooks/catch/test/", "posts to configured url");
+        const posted = calls[0].body as { category?: string; noteId?: string };
+        assert(posted.category === "vendor", "posts the filed category");
+        assert(posted.noteId === result.note?.id, "posts the note id");
+      }
+    );
+
+    await withEnv(
+      { [ZAPIER_ENV.CAPTURE_WEBHOOK_URL]: "https://hooks.zapier.com/hooks/catch/test/" },
+      async () => {
+        globalThis.fetch = (async () => {
+          throw new Error("network down");
+        }) as typeof fetch;
+        const store = storeWithCatalog();
+        const result = await processNote(
+          store,
+          captureNote(store, {
+            actorEmail: OPERATOR_EMAIL,
+            title: "Sysco short",
+            body: "Sysco truck shorted 2 cases, send the credit memo.",
+          })
+        );
+        assert(result.note?.status === "filed", "filing succeeds even when the webhook call throws");
+        assert(result.zapier?.dispatched === false, "failed webhook call is not dispatched");
+      }
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  console.log("ok zapier outbound capture (fail-open filing, honest dispatch status)");
+}
+
+function testZapierInboundValidation() {
+  const liveDriveId = "1bKpxLqR8nM2vT9cW4yH7sF3dXa0Qzz";
+  const liveDrive = parseInboundDriveFile({
+    id: liveDriveId,
+    name: "Sysco order guide",
+    webViewLink: `https://drive.google.com/file/d/${liveDriveId}/view`,
+    folder: "Vendors",
+    keywords: ["sysco"],
+  });
+  assert(liveDrive?.id === liveDriveId, "valid live Drive payload parses");
+  assert(liveDrive?.simulated === false, "inbound Drive files are never marked simulated");
+
+  assert(
+    parseInboundDriveFile({
+      id: "drive-vendor-sysco",
+      name: "Sysco order guide",
+      webViewLink: "https://drive.google.com/file/d/drive-vendor-sysco/view",
+      folder: "Vendors",
+    }) === null,
+    "placeholder-style Drive id is rejected"
+  );
+  assert(
+    parseInboundDriveFile({ id: liveDriveId, name: "x", webViewLink: "https://evil.example.com/x" }) ===
+      null,
+    "non-Drive url is rejected"
+  );
+  assert(parseInboundDriveFile({}) === null, "missing fields rejected");
+  assert(parseInboundDriveFile(null) === null, "null payload rejected");
+
+  const liveEventId = "abc123def456ghi7";
+  assert(isLiveCalendarEventId(liveEventId), "plausible calendar id accepted by the id check");
+  assert(!isLiveCalendarEventId("ev1"), "short calendar id rejected by the id check");
+  const event = parseInboundCalendarEvent({
+    id: liveEventId,
+    title: "Manager huddle",
+    start: "2026-10-02T09:00:00-05:00",
+    htmlLink: `https://calendar.google.com/calendar/event?eid=${liveEventId}`,
+  });
+  assert(event?.id === liveEventId, "valid calendar payload parses");
+  assert(
+    parseInboundCalendarEvent({ id: "ev1", title: "x", start: "2026-01-01", htmlLink: "https://x.com" }) ===
+      null,
+    "short placeholder calendar id is rejected"
+  );
+  assert(
+    parseInboundCalendarEvent({
+      id: liveEventId,
+      title: "x",
+      start: "2026-01-01",
+      htmlLink: "not-a-url",
+    }) === null,
+    "non-https calendar link is rejected"
+  );
+
+  const liveNotionId = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";
+  assert(isLiveNotionPageId(liveNotionId), "plausible Notion id accepted by the id check");
+  assert(!isLiveNotionPageId("page1"), "short Notion id rejected by the id check");
+  const page = parseInboundNotionPage({
+    id: liveNotionId,
+    title: "Sysco credit memo",
+    url: `https://www.notion.so/Sysco-credit-memo-${liveNotionId}`,
+  });
+  assert(page?.id === liveNotionId, "valid Notion payload parses");
+  assert(
+    parseInboundNotionPage({ id: "page1", title: "x", url: "https://www.notion.so/x" }) === null,
+    "short placeholder Notion id is rejected"
+  );
+  assert(
+    parseInboundNotionPage({ id: liveNotionId, title: "x", url: "https://evil.example.com/x" }) === null,
+    "non-notion.so url is rejected"
+  );
+  console.log("ok zapier inbound payload validation (no fabricated ids)");
+}
+
+function testIntegrationPanelHonestStates() {
+  withEnv(
+    {
+      [ZAPIER_ENV.DRIVE_FOLDER_NAME]: undefined,
+      [ZAPIER_ENV.CALENDAR_NAME]: undefined,
+      [ZAPIER_ENV.NOTION_TARGET_NAME]: undefined,
+      [ZAPIER_ENV.CAPTURE_WEBHOOK_URL]: undefined,
+      [ZAPIER_ENV.INBOUND_SECRET]: undefined,
+    },
+    () => {
+      for (const app of ["drive", "calendar", "notion"] as const) {
+        const panel = integrationPanelState(app);
+        assert(!panel.targetConfigured, `${app}: no target named yet`);
+        assert(!panel.webhookConfigured, `${app}: no webhook configured yet`);
+        assert(/not connected/i.test(panel.message), `${app}: honest not-connected message`);
+      }
+    }
+  );
+
+  withEnv(
+    {
+      [ZAPIER_ENV.DRIVE_FOLDER_NAME]: "CFA Hueytown Managers — Second Brain",
+      [ZAPIER_ENV.CAPTURE_WEBHOOK_URL]: undefined,
+      [ZAPIER_ENV.INBOUND_SECRET]: undefined,
+    },
+    () => {
+      const panel = integrationPanelState("drive");
+      assert(panel.targetConfigured, "drive: target named");
+      assert(!panel.webhookConfigured, "drive: webhook still not wired");
+      assert(/named.*no zapier webhook is wired/i.test(panel.message), "message explains webhook gap");
+    }
+  );
+
+  withEnv(
+    {
+      [ZAPIER_ENV.DRIVE_FOLDER_NAME]: "CFA Hueytown Managers — Second Brain",
+      [ZAPIER_ENV.CAPTURE_WEBHOOK_URL]: "https://hooks.zapier.com/hooks/catch/test/",
+    },
+    () => {
+      const panel = integrationPanelState("drive");
+      assert(panel.targetConfigured && panel.webhookConfigured, "drive: fully wired");
+      assert(/wired/i.test(panel.message), "message confirms wiring");
+    }
+  );
+  console.log("ok integration panels report honest connected/not-connected states");
+}
+
+async function testZapierInboundRoute() {
+  const { POST } = await import("../src/app/api/brain/integrations/zapier/route");
+  const tmpStore = fs.mkdtempSync(path.join(os.tmpdir(), "second-brain-zapier-route-"));
+
+  await withEnv(
+    { SECOND_BRAIN_STORE: tmpStore, [ZAPIER_ENV.INBOUND_SECRET]: undefined },
+    async () => {
+      const res = await POST(
+        new Request("http://localhost/api/brain/integrations/zapier", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ type: "drive-file" }),
+        })
+      );
+      assert(res.status === 503, "unconfigured inbound secret fails closed with 503");
+    }
+  );
+
+  await withEnv(
+    { SECOND_BRAIN_STORE: tmpStore, [ZAPIER_ENV.INBOUND_SECRET]: "topsecret" },
+    async () => {
+      const wrongSecret = await POST(
+        new Request("http://localhost/api/brain/integrations/zapier", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-zapier-secret": "nope" },
+          body: JSON.stringify({ type: "drive-file" }),
+        })
+      );
+      assert(wrongSecret.status === 401, "wrong secret rejected");
+
+      const noSecret = await POST(
+        new Request("http://localhost/api/brain/integrations/zapier", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ type: "drive-file" }),
+        })
+      );
+      assert(noSecret.status === 401, "missing secret rejected");
+
+      const liveDriveId = "1bKpxLqR8nM2vT9cW4yH7sF3dXa0Qzz";
+      const fakePayload = await POST(
+        new Request("http://localhost/api/brain/integrations/zapier", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-zapier-secret": "topsecret" },
+          body: JSON.stringify({
+            type: "drive-file",
+            id: "drive-vendor-sysco",
+            name: "fake",
+            webViewLink: "https://drive.google.com/file/d/drive-vendor-sysco/view",
+          }),
+        })
+      );
+      assert(fakePayload.status === 400, "placeholder-style Drive id is rejected by the route");
+
+      const realPayload = await POST(
+        new Request("http://localhost/api/brain/integrations/zapier", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-zapier-secret": "topsecret" },
+          body: JSON.stringify({
+            type: "drive-file",
+            id: liveDriveId,
+            name: "Sysco order guide",
+            webViewLink: `https://drive.google.com/file/d/${liveDriveId}/view`,
+            folder: "Vendors",
+            keywords: ["sysco"],
+          }),
+        })
+      );
+      assert(realPayload.status === 200, "valid live Drive payload is accepted");
+
+      const store = new FileBrainStore(tmpStore);
+      const catalog = store.getCatalog();
+      assert(
+        catalog.some((file) => file.id === liveDriveId),
+        "accepted Drive file lands in the catalog"
+      );
+      assert(
+        !catalog.some((file) => file.id === "drive-vendor-sysco"),
+        "rejected fake Drive file never reaches the catalog"
+      );
+
+      const unknownType = await POST(
+        new Request("http://localhost/api/brain/integrations/zapier", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-zapier-secret": "topsecret" },
+          body: JSON.stringify({ type: "spreadsheet" }),
+        })
+      );
+      assert(unknownType.status === 400, "unknown integration type rejected");
+    }
+  );
+  console.log("ok zapier inbound webhook route (secret auth + fail-closed validation)");
+}
+
+async function main() {
   testClassify();
   testFileAndVerify();
   testVerifyCatchesWrongFiling();
-  testVerifyIsIndependent();
+  await testVerifyIsIndependent();
   testVerifyCatchesDestinationMismatch();
-  testLink();
+  await testLink();
   testFolderOnlyLinks();
   testPipelineRejectsStoreTeam();
   testGrantBeforeShare();
-  testInboxDropAndProcess();
-  testSpoofedDrops();
-  testGrantedManagerInboxDrop();
+  await testInboxDropAndProcess();
+  await testSpoofedDrops();
+  await testGrantedManagerInboxDrop();
   testVerifyBlocksLeakedDriveLink();
   testDoesNotTreatPlaceholderCatalogAsLive();
   testManagerDashboardAuth();
@@ -948,7 +1263,15 @@ function main() {
   testBrainMapGraph();
   testBrainMapView();
   testBrainDesignTokens();
+  await testZapierOutboundCapture();
+  testZapierInboundValidation();
+  testIntegrationPanelHonestStates();
+  await testZapierInboundRoute();
   console.log("ok second-brain phase 1");
 }
 
-main();
+main().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`${message}\n`);
+  process.exit(1);
+});

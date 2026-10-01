@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, Inbox, Network, ShieldAlert, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  Brain,
+  CalendarDays,
+  HardDrive,
+  Inbox,
+  Network,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
 import { BRAIN_LOGIN_ENABLED } from "@/lib/second-brain/brain-login";
 import { MAP_CATEGORY_COLORS } from "@/lib/second-brain/design-tokens";
 import BrainOpenBanner from "./BrainOpenBanner";
@@ -26,6 +35,35 @@ interface Note {
   capturedAt: string;
 }
 
+interface IntegrationPanel {
+  app: "drive" | "calendar" | "notion";
+  targetConfigured: boolean;
+  webhookConfigured: boolean;
+  message: string;
+}
+
+interface DriveFileItem {
+  id: string;
+  name: string;
+  webViewLink: string;
+  folder: string;
+}
+
+interface CalendarEventItem {
+  id: string;
+  title: string;
+  start: string;
+  htmlLink: string;
+  calendarName?: string;
+}
+
+interface NotionPageItem {
+  id: string;
+  title: string;
+  url: string;
+  databaseName?: string;
+}
+
 interface BrainState {
   actor: string;
   drive: {
@@ -38,6 +76,11 @@ interface BrainState {
   inbox: Note[];
   needsReview: Note[];
   filed: Note[];
+  integrations: {
+    drive: { panel: IntegrationPanel; files: DriveFileItem[] };
+    calendar: { panel: IntegrationPanel; events: CalendarEventItem[] };
+    notion: { panel: IntegrationPanel; pages: NotionPageItem[] };
+  };
 }
 
 function NoteCard({ note }: { note: Note }) {
@@ -59,6 +102,54 @@ function NoteCard({ note }: { note: Note }) {
       </p>
       <p className="mt-2 text-[11px] text-[var(--brain-taupe)]">{note.actorEmail}</p>
     </article>
+  );
+}
+
+function IntegrationCard<T>({
+  id,
+  icon,
+  title,
+  panel,
+  items,
+  renderItem,
+}: {
+  id: string;
+  icon: React.ReactNode;
+  title: string;
+  panel: IntegrationPanel;
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+}) {
+  const connected = panel.targetConfigured && panel.webhookConfigured;
+  return (
+    <section
+      id={id}
+      data-connector={panel.app}
+      className="brain-card brain-connector flex min-h-[14rem] flex-col"
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h2 className="brain-card-title">{title}</h2>
+        </div>
+        <span
+          data-connected={connected}
+          className={connected ? "brain-status brain-status--ok" : "brain-status brain-status--warn"}
+        >
+          {connected ? "Connected" : "Not connected"}
+        </span>
+      </div>
+      <p className="mb-3 text-sm text-[var(--brain-muted)]">{panel.message}</p>
+      <div className="flex flex-1 flex-col gap-2">
+        {items.length === 0 ? (
+          <p className="text-sm text-[var(--brain-muted)]">
+            {connected ? `No ${title.toLowerCase()} synced yet.` : "Nothing to show yet."}
+          </p>
+        ) : (
+          items.map((item, index) => <div key={index}>{renderItem(item)}</div>)
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -231,6 +322,50 @@ export default function BrainDashboard() {
               </p>
             </div>
           ))}
+        </div>
+
+        <div id="integration-panels" className="mb-6 grid gap-4 md:grid-cols-3">
+          <IntegrationCard
+            id="drive-panel"
+            icon={<HardDrive className="h-4 w-4 text-[var(--brain-drive)]" />}
+            title="Drive files"
+            panel={state.integrations.drive.panel}
+            items={state.integrations.drive.files}
+            renderItem={(file) => (
+              <a href={file.webViewLink} target="_blank" rel="noreferrer" className="brain-link-row">
+                <p className="text-sm font-extrabold text-[var(--brain-ink)]">{file.name}</p>
+                <p className="text-xs text-[var(--brain-muted)]">{file.folder}</p>
+              </a>
+            )}
+          />
+          <IntegrationCard
+            id="calendar-panel"
+            icon={<CalendarDays className="h-4 w-4 text-[var(--brain-calendar)]" />}
+            title="Calendar events"
+            panel={state.integrations.calendar.panel}
+            items={state.integrations.calendar.events}
+            renderItem={(event) => (
+              <a href={event.htmlLink} target="_blank" rel="noreferrer" className="brain-link-row">
+                <p className="text-sm font-extrabold text-[var(--brain-ink)]">{event.title}</p>
+                <p className="text-xs text-[var(--brain-muted)]">{event.start}</p>
+              </a>
+            )}
+          />
+          <IntegrationCard
+            id="notion-panel"
+            icon={<BookOpen className="h-4 w-4 text-[var(--brain-notion)]" />}
+            title="Notion pages"
+            panel={state.integrations.notion.panel}
+            items={state.integrations.notion.pages}
+            renderItem={(page) => (
+              <a href={page.url} target="_blank" rel="noreferrer" className="brain-link-row">
+                <p className="text-sm font-extrabold text-[var(--brain-ink)]">{page.title}</p>
+                {page.databaseName && (
+                  <p className="text-xs text-[var(--brain-muted)]">{page.databaseName}</p>
+                )}
+              </a>
+            )}
+          />
         </div>
 
         <form onSubmit={(e) => void capture(e)} className="brain-card brain-card--capture mb-6">

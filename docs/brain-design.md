@@ -25,10 +25,10 @@ Canonical copy lives in the Project store (`docs/brain-design.md`). This repo fi
 ## Connector chrome
 
 ```html
-<section class="brain-card brain-connector" data-connector="drive|calendar|notion">
+<section id="drive-panel" class="brain-card brain-connector" data-connector="drive">
 ```
 
-Accents: Drive `#3EC4E0`, Calendar `#F0B429`, Notion `#6B66D8`. Never paint a connected state without live data.
+Accents: Drive `#3EC4E0`, Calendar `#F0B429`, Notion `#6B66D8`. Status: `.brain-status--warn` / `--ok`. Never paint connected without live data. Keep `#integration-panels` and `data-connected`.
 
 ## Honesty
 

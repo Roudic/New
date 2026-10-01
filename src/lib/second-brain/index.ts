@@ -59,6 +59,20 @@ export {
   readNotes,
 } from "./pipeline";
 export {
+  ZAPIER_ENV,
+  captureWebhookUrl,
+  inboundSecret,
+  isCaptureWebhookConfigured,
+  isInboundWebhookConfigured,
+  integrationPanelState,
+  notifyZapierCapture,
+  isLiveCalendarEventId,
+  isLiveNotionPageId,
+  parseInboundDriveFile,
+  parseInboundCalendarEvent,
+  parseInboundNotionPage,
+} from "./integrations";
+export {
   buildBrainGraph,
   shouldOverlayMapDemo,
   MAP_DEMO_NOTES,
@@ -80,13 +94,18 @@ export {
 } from "./map-view";
 export type {
   AccessRoster,
+  CalendarEvent,
   CapturedNote,
   Classification,
   DiscardedDrop,
   DriveFile,
   FilingDecision,
+  IntegrationApp,
+  IntegrationPanelState,
   KnowledgeLink,
+  NotionPage,
   ProcessResult,
   SecondBrainCategory,
   VerificationResult,
+  ZapierDispatchResult,
 } from "./types";
