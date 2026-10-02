@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -106,6 +107,11 @@ export default function AssignChecklistForm() {
           {selectedTemplate && (
             <p className="mt-2 text-sm text-slate-500">{selectedTemplate.description}</p>
           )}
+          <p className="mt-2 text-sm">
+            <Link href="/checklists/new" className="font-semibold text-brand-700">
+              Need a new checklist? Create one
+            </Link>
+          </p>
         </div>
 
         <div>

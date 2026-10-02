@@ -45,12 +45,12 @@ export default function ChecklistsPage() {
       <PageHeader
         eyebrow="Audit Library"
         title="Kitchen Audit Checklists"
-        description="Built-in kitchen compliance templates and custom audits you can assign to your crew."
+        description="Your audits. Create one in a minute — type tasks and press Enter."
         action={
           isAdmin ? (
             <Link href="/checklists/new" className="btn-primary">
               <Plus className="h-4 w-4" />
-              Create Checklist
+              New checklist
             </Link>
           ) : undefined
         }
@@ -102,7 +102,7 @@ export default function ChecklistsPage() {
           <p className="mt-3 font-bold text-slate-900">No custom checklists yet</p>
           {isAdmin && (
             <Link href="/checklists/new" className="btn-primary mt-4 inline-flex">
-              Create Checklist
+              New checklist
             </Link>
           )}
         </div>

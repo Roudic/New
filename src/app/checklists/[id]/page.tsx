@@ -56,10 +56,15 @@ export default function ChecklistDetailPage({
         action={
           isAdmin ? (
             <div className="flex flex-wrap gap-2">
-              {template.isCustom && (
+              {template.isCustom ? (
                 <Link href={`/checklists/${template.id}/edit`} className="btn-secondary">
                   <Pencil className="h-4 w-4" />
                   Edit
+                </Link>
+              ) : (
+                <Link href={`/checklists/new?from=${template.id}`} className="btn-secondary">
+                  <Pencil className="h-4 w-4" />
+                  Copy & customize
                 </Link>
               )}
               <button type="button" className="btn-primary" onClick={handleStart}>
