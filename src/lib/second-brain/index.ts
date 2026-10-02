@@ -79,6 +79,12 @@ export {
   MAP_DEMO_NOTES,
   MAP_CATEGORY_COLORS,
 } from "./graph";
+export {
+  BRAIN_CATEGORY_COLORS,
+  BRAIN_CONNECTOR_COLORS,
+  BRAIN_MAP_THEME,
+  MAP_CATEGORY_COLORS as BRAIN_MAP_CATEGORY_COLORS,
+} from "./design-tokens";
 export type { BrainGraph, BrainGraphNode, BrainGraphLink } from "./graph";
 export {
   createSimNodes,

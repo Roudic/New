@@ -29,8 +29,10 @@ import {
   isSimulatedDriveFile,
   linkNote,
   MemoryBrainStore,
+  MAP_CATEGORY_COLORS,
   MAP_DEMO_NOTES,
-  notifyZapierCapture,
+  BRAIN_CONNECTOR_COLORS,
+  BRAIN_MAP_THEME,
   OPERATOR_EMAIL,
   parseInboundCalendarEvent,
   parseInboundDriveFile,
@@ -910,6 +912,30 @@ function testBrainMapView() {
   console.log("ok canvas 2.5D map view");
 }
 
+function testBrainDesignTokens() {
+  const keys = [
+    "shift-notes",
+    "vendor",
+    "training",
+    "incidents",
+    "schedules",
+    "general",
+    "inbox",
+    "drive",
+  ];
+  const seen: Record<string, true> = {};
+  for (const key of keys) {
+    const hex = MAP_CATEGORY_COLORS[key];
+    assert(/^#[0-9A-Fa-f]{6}$/.test(hex), `token ${key} is a hex color`);
+    assert(!seen[hex], `token ${key} hex is unique`);
+    seen[hex] = true;
+  }
+  assert(MAP_CATEGORY_COLORS.drive === BRAIN_CONNECTOR_COLORS.drive, "Drive node and connector share a hex");
+  assert(BRAIN_MAP_THEME.bgOuter === "#0C0908", "map void is cocoa, not slate");
+  assert(BRAIN_LOGIN_ENABLED === false, "login stays off");
+  console.log("ok brain design tokens");
+}
+
 function withEnv(overrides: Record<string, string | undefined>, fn: () => void | Promise<void>) {
   const prev: Record<string, string | undefined> = {};
   for (const key of Object.keys(overrides)) {
@@ -1249,6 +1275,7 @@ async function main() {
   testBrainLoginOff();
   testBrainMapGraph();
   testBrainMapView();
+  testBrainDesignTokens();
   await testZapierOutboundCapture();
   testZapierInboundValidation();
   testIntegrationPanelHonestStates();

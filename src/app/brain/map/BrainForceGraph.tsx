@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { BrainGraphLink, BrainGraphNode } from "@/lib/second-brain/graph";
+import { BRAIN_MAP_THEME } from "@/lib/second-brain/design-tokens";
 import {
   createSimNodes,
   nodeColor,
@@ -133,8 +134,8 @@ export default function BrainForceGraph({
         height / 2,
         Math.max(width, height) * 0.7
       );
-      bg.addColorStop(0, "#0f172a");
-      bg.addColorStop(1, "#020617");
+      bg.addColorStop(0, BRAIN_MAP_THEME.bgInner);
+      bg.addColorStop(1, BRAIN_MAP_THEME.bgOuter);
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, width, height);
 
@@ -152,7 +153,7 @@ export default function BrainForceGraph({
         ctx.moveTo(a.sx, a.sy);
         ctx.lineTo(b.sx, b.sy);
         ctx.strokeStyle =
-          link.kind === "drive" ? "rgba(56, 189, 248, 0.55)" : "rgba(148, 163, 184, 0.45)";
+          link.kind === "drive" ? BRAIN_MAP_THEME.linkDrive : BRAIN_MAP_THEME.linkNote;
         ctx.lineWidth = 1.6;
         ctx.stroke();
       }
@@ -177,15 +178,17 @@ export default function BrainForceGraph({
         ctx.fill();
         ctx.lineWidth = item.node.data.id === selectedRef.current ? 3 : 1;
         ctx.strokeStyle =
-          item.node.data.id === selectedRef.current ? "#f8fafc" : "rgba(15,23,42,0.7)";
+          item.node.data.id === selectedRef.current
+            ? BRAIN_MAP_THEME.selectedStroke
+            : BRAIN_MAP_THEME.nodeStroke;
         ctx.stroke();
 
-        ctx.font = `${Math.max(11, Math.round(12 * Math.min(item.scale, 1.3)))}px ui-sans-serif, system-ui, sans-serif`;
+        ctx.font = `${Math.max(11, Math.round(12 * Math.min(item.scale, 1.3)))}px var(--font-brain-ui), Nunito, ui-rounded, system-ui, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
         ctx.lineWidth = 4;
-        ctx.strokeStyle = "rgba(2,6,23,0.85)";
-        ctx.fillStyle = "#e2e8f0";
+        ctx.strokeStyle = BRAIN_MAP_THEME.labelStroke;
+        ctx.fillStyle = BRAIN_MAP_THEME.labelFill;
         const label = item.node.data.title;
         ctx.strokeText(label, item.sx, item.sy + r + 6);
         ctx.fillText(label, item.sx, item.sy + r + 6);
@@ -261,7 +264,7 @@ export default function BrainForceGraph({
   return (
     <div
       ref={hostRef}
-      className="h-full w-full overflow-hidden rounded-2xl bg-slate-950"
+      className="brain-map-canvas-wrap"
     >
       <canvas
         ref={canvasRef}

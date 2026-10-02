@@ -6,15 +6,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Brain, ShieldAlert } from "lucide-react";
 import { BRAIN_LOGIN_ENABLED } from "@/lib/second-brain/brain-login";
+import { MAP_CATEGORY_COLORS } from "@/lib/second-brain/design-tokens";
 import BrainOpenBanner from "../BrainOpenBanner";
 import type { BrainGraphLink, BrainGraphNode } from "@/lib/second-brain/graph";
-import { MAP_CATEGORY_COLORS } from "@/lib/second-brain/graph";
 
 const BrainForceGraph = dynamic(() => import("./BrainForceGraph"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full items-center justify-center text-sm text-slate-400">
-      Loading 3D map…
+    <div className="flex h-full items-center justify-center text-sm text-[var(--brain-cream)]/60">
+      Loading brain map…
     </div>
   ),
 });
@@ -77,8 +77,8 @@ export default function BrainMap() {
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm font-medium text-slate-600">
+      <div className="brain-shell brain-shell--night flex min-h-screen items-center justify-center">
+        <p className="text-sm font-medium text-[var(--brain-cream)]/70">
           {error ?? "Loading Second Brain map…"}
         </p>
       </div>
@@ -86,26 +86,24 @@ export default function BrainMap() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+    <div className="brain-shell brain-shell--night flex min-h-screen flex-col">
       <header className="z-10 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-3">
-          <Link href="/brain" className="btn-secondary bg-white/10 py-2 text-white hover:bg-white/20">
+          <Link href="/brain" className="brain-btn brain-btn--night py-2">
             <ArrowLeft className="h-4 w-4" />
             Dashboard
           </Link>
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10">
+          <div className="brain-mark brain-mark--night" aria-hidden="true">
             <Brain className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-              Manager-only · 3D map
-            </p>
-            <h1 className="text-lg font-bold">Second Brain</h1>
-            <p className="text-xs text-slate-400">{data.actor}</p>
+            <p className="brain-kicker">Manager-only · brain model</p>
+            <h1 className="brain-display text-xl text-[var(--brain-cream)]">Second Brain</h1>
+            <p className="text-xs text-[var(--brain-cream)]/55">{data.actor}</p>
           </div>
         </div>
         {BRAIN_LOGIN_ENABLED && (
-          <button type="button" onClick={() => void logout()} className="btn-secondary py-2">
+          <button type="button" onClick={() => void logout()} className="brain-btn brain-btn--night py-2">
             Sign out
           </button>
         )}
@@ -113,26 +111,23 @@ export default function BrainMap() {
 
       <BrainOpenBanner dark />
 
-      <div
-        id="drive-status"
-        className="flex items-start gap-3 border-b border-amber-900/40 bg-amber-950/40 px-4 py-3"
-      >
-        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+      <div id="drive-status" className="brain-banner brain-banner--warn-night">
+        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-[#f0b429]" />
         <div>
-          <p className="text-sm font-semibold text-amber-100">
+          <p className="text-sm font-extrabold">
             Drive is not wired{data.drive.folderId ? "" : " (folder id is null)"}
             {data.driveNodeCount === 0 ? " · no Drive nodes on this map" : ""}
           </p>
-          <p className="mt-1 text-sm text-amber-200/90">{data.drive.message}</p>
+          <p className="mt-1 text-sm opacity-90">{data.drive.message}</p>
           {data.demo && (
-            <p id="map-demo-banner" className="mt-1 text-sm text-amber-100">
+            <p id="map-demo-banner" className="mt-1 text-sm">
               Showing a few demo notes so the graph isn’t empty. They are not Drive files.
             </p>
           )}
         </div>
       </div>
 
-      <p className="px-4 py-2 text-xs text-slate-400">
+      <p className="px-4 py-2 text-xs text-[var(--brain-cream)]/50">
         Drag to orbit · Scroll to zoom · Click a node to open that note
       </p>
 
@@ -148,43 +143,38 @@ export default function BrainMap() {
         </div>
 
         {selected && (
-          <aside
-            id="brain-map-note"
-            className="absolute bottom-6 right-6 max-h-[min(70vh,32rem)] w-[min(100%-2rem,22rem)] overflow-y-auto rounded-2xl border border-white/15 bg-slate-900/95 p-4 shadow-2xl"
-          >
-            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+          <aside id="brain-map-note" className="brain-map-note">
+            <p className="brain-kicker">
               {selected.kind === "drive" ? "Live Drive file" : selected.category ?? selected.status}
               {selected.demo ? " · demo" : ""}
             </p>
-            <h2 className="mt-1 text-base font-semibold text-white">{selected.title}</h2>
+            <h2 className="brain-display mt-1 text-lg text-white">{selected.title}</h2>
             {selected.body && (
-              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-300">{selected.body}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--brain-cream)]/80">
+                {selected.body}
+              </p>
             )}
             {selected.actorEmail && (
-              <p className="mt-2 text-[11px] text-slate-500">{selected.actorEmail}</p>
+              <p className="mt-2 text-[11px] text-[var(--brain-cream)]/45">{selected.actorEmail}</p>
             )}
             {selected.kind === "drive" && selected.url && (
               <a
                 href={selected.url}
-                className="mt-3 inline-block text-sm font-medium text-sky-300 underline"
+                className="mt-3 inline-block text-sm font-semibold text-[var(--brain-drive)] underline"
                 target="_blank"
                 rel="noreferrer"
               >
                 Open in Drive
               </a>
             )}
-            <button
-              type="button"
-              className="btn-secondary mt-4 w-full"
-              onClick={() => setSelected(null)}
-            >
+            <button type="button" className="brain-btn brain-btn--night mt-4 w-full" onClick={() => setSelected(null)}>
               Close
             </button>
           </aside>
         )}
       </div>
 
-      <ul className="flex flex-wrap gap-3 px-4 pb-6 text-xs text-slate-300">
+      <ul className="flex flex-wrap gap-3 px-4 pb-6 text-xs text-[var(--brain-cream)]/75">
         {LEGEND.map((item) => (
           <li key={item.key} className="flex items-center gap-1.5">
             <span
