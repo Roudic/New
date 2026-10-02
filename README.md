@@ -104,6 +104,8 @@ Templates live in [`public/scorecard/`](./public/scorecard/). `npm run test:scor
 
 Shared capture inbox for the 4 Chick-fil-A Hueytown managers. Dashboard at **`/brain`**. The agent classifies unorganized notes, files them, and **verifies** the filing decision (second scorer; `general` / low-confidence stay in needs-review). **Drive is not wired yet** (folder id is null; example catalog IDs are fixtures, not live files).
 
+`/brain` also shows **Drive files**, **Calendar events**, and **Notion pages** panels, synced via **Zapier** (webhooks, not direct API calls). Each panel honestly reports "Not connected" until Joshua names a real target and a Zap is wired — see the env var names (not values) in [`second-brain/README.md`](./second-brain/README.md#zapier-drive-calendar-notion-sync).
+
 ```bash
 npm run test:second-brain
 npx tsx scripts/second-brain.ts capture --actor vinziant@gmail.com --title "Sysco short" --body "Truck shorted nuggets." --process

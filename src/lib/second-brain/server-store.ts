@@ -3,16 +3,18 @@ import { ensureDatabaseSchema } from "@/lib/db-schema";
 import { prisma } from "@/lib/prisma";
 import { defaultRoster } from "./access";
 import { FileBrainStore, MemoryBrainStore, type BrainStore } from "./store";
-import type { AccessRoster, CapturedNote, DriveFile } from "./types";
+import type { AccessRoster, CalendarEvent, CapturedNote, DriveFile, NotionPage } from "./types";
 
 interface PersistedPayload {
   roster: AccessRoster;
   catalog: DriveFile[];
   notes: CapturedNote[];
+  calendarEvents: CalendarEvent[];
+  notionPages: NotionPage[];
 }
 
 function emptyPayload(): PersistedPayload {
-  return { roster: defaultRoster(), catalog: [], notes: [] };
+  return { roster: defaultRoster(), catalog: [], notes: [], calendarEvents: [], notionPages: [] };
 }
 
 function memoryFromPayload(payload: PersistedPayload): MemoryBrainStore {
@@ -20,7 +22,13 @@ function memoryFromPayload(payload: PersistedPayload): MemoryBrainStore {
   for (const note of payload.notes) {
     notes.set(note.id, note);
   }
-  return new MemoryBrainStore(payload.roster, payload.catalog, notes);
+  return new MemoryBrainStore(
+    payload.roster,
+    payload.catalog,
+    notes,
+    payload.calendarEvents ?? [],
+    payload.notionPages ?? []
+  );
 }
 
 function payloadFromStore(store: BrainStore): PersistedPayload {
@@ -28,6 +36,8 @@ function payloadFromStore(store: BrainStore): PersistedPayload {
     roster: store.getRoster(),
     catalog: store.getCatalog().filter((file) => file.simulated !== true),
     notes: store.listNotes(),
+    calendarEvents: store.getCalendarEvents(),
+    notionPages: store.getNotionPages(),
   };
 }
 

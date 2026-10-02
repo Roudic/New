@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, Inbox, Network, ShieldAlert, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  Brain,
+  CalendarDays,
+  HardDrive,
+  Inbox,
+  Network,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
 import { BRAIN_LOGIN_ENABLED } from "@/lib/second-brain/brain-login";
 import BrainOpenBanner from "./BrainOpenBanner";
 
@@ -25,6 +34,35 @@ interface Note {
   capturedAt: string;
 }
 
+interface IntegrationPanel {
+  app: "drive" | "calendar" | "notion";
+  targetConfigured: boolean;
+  webhookConfigured: boolean;
+  message: string;
+}
+
+interface DriveFileItem {
+  id: string;
+  name: string;
+  webViewLink: string;
+  folder: string;
+}
+
+interface CalendarEventItem {
+  id: string;
+  title: string;
+  start: string;
+  htmlLink: string;
+  calendarName?: string;
+}
+
+interface NotionPageItem {
+  id: string;
+  title: string;
+  url: string;
+  databaseName?: string;
+}
+
 interface BrainState {
   actor: string;
   drive: {
@@ -37,6 +75,11 @@ interface BrainState {
   inbox: Note[];
   needsReview: Note[];
   filed: Note[];
+  integrations: {
+    drive: { panel: IntegrationPanel; files: DriveFileItem[] };
+    calendar: { panel: IntegrationPanel; events: CalendarEventItem[] };
+    notion: { panel: IntegrationPanel; pages: NotionPageItem[] };
+  };
 }
 
 function NoteCard({ note }: { note: Note }) {
@@ -56,6 +99,54 @@ function NoteCard({ note }: { note: Note }) {
       <p className="mt-1 line-clamp-4 text-sm text-slate-600">{note.body}</p>
       <p className="mt-2 text-[11px] text-slate-400">{note.actorEmail}</p>
     </article>
+  );
+}
+
+function IntegrationCard<T>({
+  id,
+  icon,
+  title,
+  panel,
+  items,
+  renderItem,
+}: {
+  id: string;
+  icon: React.ReactNode;
+  title: string;
+  panel: IntegrationPanel;
+  items: T[];
+  renderItem: (item: T) => React.ReactNode;
+}) {
+  const connected = panel.targetConfigured && panel.webhookConfigured;
+  return (
+    <section id={id} className="glass-panel flex min-h-[14rem] flex-col p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {icon}
+          <h2 className="section-title text-base">{title}</h2>
+        </div>
+        <span
+          data-connected={connected}
+          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            connected
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-amber-100 text-amber-800"
+          }`}
+        >
+          {connected ? "Connected" : "Not connected"}
+        </span>
+      </div>
+      <p className="mb-3 text-sm text-slate-600">{panel.message}</p>
+      <div className="flex flex-1 flex-col gap-2">
+        {items.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            {connected ? `No ${title.toLowerCase()} synced yet.` : "Nothing to show yet."}
+          </p>
+        ) : (
+          items.map((item, index) => <div key={index}>{renderItem(item)}</div>)
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -229,6 +320,65 @@ export default function BrainDashboard() {
             <p className="mt-1 text-[11px] font-medium text-slate-600">{seat.status}</p>
           </div>
         ))}
+      </div>
+
+      <div id="integration-panels" className="mb-6 grid gap-4 md:grid-cols-3">
+        <IntegrationCard
+          id="drive-panel"
+          icon={<HardDrive className="h-4 w-4 text-brand-700" />}
+          title="Drive files"
+          panel={state.integrations.drive.panel}
+          items={state.integrations.drive.files}
+          renderItem={(file) => (
+            <a
+              href={file.webViewLink}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-xl border border-slate-200 bg-white p-3 hover:border-brand-300"
+            >
+              <p className="text-sm font-semibold text-slate-900">{file.name}</p>
+              <p className="text-xs text-slate-500">{file.folder}</p>
+            </a>
+          )}
+        />
+        <IntegrationCard
+          id="calendar-panel"
+          icon={<CalendarDays className="h-4 w-4 text-brand-700" />}
+          title="Calendar events"
+          panel={state.integrations.calendar.panel}
+          items={state.integrations.calendar.events}
+          renderItem={(event) => (
+            <a
+              href={event.htmlLink}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-xl border border-slate-200 bg-white p-3 hover:border-brand-300"
+            >
+              <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+              <p className="text-xs text-slate-500">{event.start}</p>
+            </a>
+          )}
+        />
+        <IntegrationCard
+          id="notion-panel"
+          icon={<BookOpen className="h-4 w-4 text-brand-700" />}
+          title="Notion pages"
+          panel={state.integrations.notion.panel}
+          items={state.integrations.notion.pages}
+          renderItem={(page) => (
+            <a
+              href={page.url}
+              target="_blank"
+              rel="noreferrer"
+              className="block rounded-xl border border-slate-200 bg-white p-3 hover:border-brand-300"
+            >
+              <p className="text-sm font-semibold text-slate-900">{page.title}</p>
+              {page.databaseName && (
+                <p className="text-xs text-slate-500">{page.databaseName}</p>
+              )}
+            </a>
+          )}
+        />
       </div>
 
       <form onSubmit={(e) => void capture(e)} className="glass-panel mb-6 p-4">

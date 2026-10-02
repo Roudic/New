@@ -122,6 +122,42 @@ export interface CapturedNote {
   rejectedReason?: string;
 }
 
+export type IntegrationApp = "drive" | "calendar" | "notion";
+
+/**
+ * A Drive/Calendar/Notion item pushed in by the Zapier inbound webhook after a
+ * real Zap ran. Never fabricated locally — `source` is always "zapier" and the
+ * id/url come straight from the inbound payload.
+ */
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end?: string;
+  htmlLink: string;
+  calendarName?: string;
+  source: "zapier";
+  receivedAt: string;
+}
+
+export interface NotionPage {
+  id: string;
+  title: string;
+  url: string;
+  databaseName?: string;
+  source: "zapier";
+  receivedAt: string;
+}
+
+export interface IntegrationPanelState {
+  app: IntegrationApp;
+  /** True once Joshua has named a real Drive folder / calendar / Notion page/database to use. */
+  targetConfigured: boolean;
+  /** True once the matching Zapier webhook env var is set on this deployment. */
+  webhookConfigured: boolean;
+  message: string;
+}
+
 export type AccessAction = "capture" | "read" | "process" | "grant" | "confirm-share";
 
 export interface AccessDecision {
@@ -143,10 +179,17 @@ export interface DiscardedDrop {
   claimedActor?: string;
 }
 
+export interface ZapierDispatchResult {
+  attempted: boolean;
+  dispatched: boolean;
+  reason: string;
+}
+
 export interface ProcessResult {
   note?: CapturedNote;
   discarded?: DiscardedDrop;
   decision?: FilingDecision;
   links: KnowledgeLink[];
   verification?: VerificationResult;
+  zapier?: ZapierDispatchResult;
 }

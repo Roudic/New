@@ -4,9 +4,11 @@ import path from "node:path";
 import { defaultRoster, normalizeEmail } from "./access";
 import type {
   AccessRoster,
+  CalendarEvent,
   CapturedNote,
   CaptureSource,
   DriveFile,
+  NotionPage,
 } from "./types";
 
 export interface InboxDrop {
@@ -24,6 +26,10 @@ export interface BrainStore {
   saveRoster(roster: AccessRoster): void;
   getCatalog(): DriveFile[];
   saveCatalog(files: DriveFile[]): void;
+  getCalendarEvents(): CalendarEvent[];
+  addCalendarEvent(event: CalendarEvent): void;
+  getNotionPages(): NotionPage[];
+  addNotionPage(page: NotionPage): void;
   putNote(note: CapturedNote): void;
   deleteNote(id: string): void;
   getNote(id: string): CapturedNote | undefined;
@@ -68,7 +74,9 @@ export class MemoryBrainStore implements BrainStore {
   constructor(
     private roster: AccessRoster = defaultRoster(),
     private catalog: DriveFile[] = [],
-    private notes: Map<string, CapturedNote> = new Map()
+    private notes: Map<string, CapturedNote> = new Map(),
+    private calendarEvents: CalendarEvent[] = [],
+    private notionPages: NotionPage[] = []
   ) {}
 
   getRoster(): AccessRoster {
@@ -85,6 +93,27 @@ export class MemoryBrainStore implements BrainStore {
 
   saveCatalog(files: DriveFile[]): void {
     this.catalog = files;
+  }
+
+  getCalendarEvents(): CalendarEvent[] {
+    return this.calendarEvents;
+  }
+
+  addCalendarEvent(event: CalendarEvent): void {
+    this.calendarEvents = this.calendarEvents
+      .filter((existing) => existing.id !== event.id)
+      .concat(event)
+      .sort((a, b) => a.start.localeCompare(b.start));
+  }
+
+  getNotionPages(): NotionPage[] {
+    return this.notionPages;
+  }
+
+  addNotionPage(page: NotionPage): void {
+    this.notionPages = this.notionPages
+      .filter((existing) => existing.id !== page.id)
+      .concat(page);
   }
 
   putNote(note: CapturedNote): void {
@@ -148,6 +177,39 @@ export class FileBrainStore implements BrainStore {
     fs.writeFileSync(
       path.join(this.rootDir, "catalog.json"),
       `${JSON.stringify(live, null, 2)}\n`
+    );
+  }
+
+  getCalendarEvents(): CalendarEvent[] {
+    const file = path.join(this.rootDir, "calendar.json");
+    if (!fs.existsSync(file)) return [];
+    return JSON.parse(fs.readFileSync(file, "utf8")) as CalendarEvent[];
+  }
+
+  addCalendarEvent(event: CalendarEvent): void {
+    const events = this.getCalendarEvents()
+      .filter((existing) => existing.id !== event.id)
+      .concat(event)
+      .sort((a, b) => a.start.localeCompare(b.start));
+    fs.writeFileSync(
+      path.join(this.rootDir, "calendar.json"),
+      `${JSON.stringify(events, null, 2)}\n`
+    );
+  }
+
+  getNotionPages(): NotionPage[] {
+    const file = path.join(this.rootDir, "notion.json");
+    if (!fs.existsSync(file)) return [];
+    return JSON.parse(fs.readFileSync(file, "utf8")) as NotionPage[];
+  }
+
+  addNotionPage(page: NotionPage): void {
+    const pages = this.getNotionPages()
+      .filter((existing) => existing.id !== page.id)
+      .concat(page);
+    fs.writeFileSync(
+      path.join(this.rootDir, "notion.json"),
+      `${JSON.stringify(pages, null, 2)}\n`
     );
   }
 
